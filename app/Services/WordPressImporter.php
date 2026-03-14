@@ -92,39 +92,110 @@ final class WordPressImporter
 
     private function detectPrefix(string $sqlPath): string
     {
-        $contents = file_get_contents($sqlPath) ?: '';
-        if (preg_match('/CREATE TABLE `([^`]+posts)`/i', $contents, $matches)) {
-            return preg_replace('/posts$/', '', $matches[1]) ?: 'wp_';
+        $handle = fopen($sqlPath, 'rb');
+        if (!$handle) {
+            throw new RuntimeException('Unable to open SQL dump.');
         }
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                if (preg_match('/CREATE TABLE `([^`]+posts)`/i', $line, $matches)) {
+                    return preg_replace('/posts$/', '', $matches[1]) ?: 'wp_';
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+
         throw new RuntimeException('Could not determine the WordPress table prefix.');
     }
 
     private function parseNeededTables(string $sqlPath, string $prefix): array
     {
-        $contents = file_get_contents($sqlPath) ?: '';
         $tables = ['posts', 'terms', 'term_taxonomy', 'term_relationships', 'postmeta'];
-        $parsed = [];
+        $parsed = array_fill_keys($tables, []);
+        $targetTables = array_combine(
+            array_map(static fn(string $table): string => $prefix . $table, $tables),
+            $tables
+        );
 
-        foreach ($tables as $table) {
-            $fullName = $prefix . $table;
-            $parsed[$table] = [];
-            if (!preg_match_all('/INSERT INTO `' . preg_quote($fullName, '/') . '` \(([^)]+)\) VALUES\s*(.+?);/is', $contents, $matches, PREG_SET_ORDER)) {
-                continue;
-            }
+        $handle = fopen($sqlPath, 'rb');
+        if (!$handle) {
+            throw new RuntimeException('Unable to open SQL dump.');
+        }
 
-            foreach ($matches as $match) {
-                $columns = array_map(static fn(string $column): string => trim($column, " `"), explode(',', $match[1]));
-                foreach ($this->splitTuples($match[2]) as $tuple) {
-                    $values = $this->parseTuple($tuple);
-                    if (count($values) !== count($columns)) {
+        $statement = '';
+        $currentTable = null;
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                if ($currentTable === null) {
+                    if (!preg_match('/^INSERT INTO `([^`]+)` \(([^)]+)\) VALUES\s*/i', $line, $matches)) {
                         continue;
                     }
-                    $parsed[$table][] = array_combine($columns, $values);
+
+                    $fullTableName = $matches[1];
+                    if (!isset($targetTables[$fullTableName])) {
+                        continue;
+                    }
+
+                    $currentTable = $targetTables[$fullTableName];
+                    $statement = $line;
+                } else {
+                    $statement .= $line;
                 }
+
+                if (!$this->statementComplete($statement)) {
+                    continue;
+                }
+
+                $match = [];
+                if (preg_match('/^INSERT INTO `([^`]+)` \(([^)]+)\) VALUES\s*(.+);$/is', trim($statement), $match)) {
+                    $columns = array_map(static fn(string $column): string => trim($column, " `"), explode(',', $match[2]));
+                    foreach ($this->splitTuples($match[3]) as $tuple) {
+                        $values = $this->parseTuple($tuple);
+                        if (count($values) !== count($columns)) {
+                            continue;
+                        }
+                        $parsed[$currentTable][] = array_combine($columns, $values);
+                    }
+                }
+
+                $statement = '';
+                $currentTable = null;
             }
+        } finally {
+            fclose($handle);
         }
 
         return $parsed;
+    }
+
+    private function statementComplete(string $statement): bool
+    {
+        $inString = false;
+        $escaped = false;
+        $length = strlen($statement);
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $statement[$i];
+            if ($inString) {
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($char === '\\') {
+                    $escaped = true;
+                } elseif ($char === "'") {
+                    $inString = false;
+                }
+                continue;
+            }
+
+            if ($char === "'") {
+                $inString = true;
+            }
+        }
+
+        return !$inString && str_ends_with(rtrim($statement), ';');
     }
 
     private function splitTuples(string $values): array
