@@ -7,6 +7,7 @@
     <p>No admin account exists yet. Run the installer first.</p>
   <?php else: ?>
     <p>Admin: <strong><?= htmlspecialchars($admin['email']) ?></strong></p>
+    <p class="muted">Passkey login should be used from a hostname rather than a raw IP address.</p>
     <button id="passkey-login" type="button">Login with passkey</button>
     <p id="passkey-message" class="muted"></p>
 
@@ -25,41 +26,55 @@ const encodeBase64Url = (buffer) => btoa(String.fromCharCode(...new Uint8Array(b
 
 document.getElementById('passkey-login')?.addEventListener('click', async () => {
   const message = document.getElementById('passkey-message');
-  message.textContent = 'Waiting for browser passkey prompt...';
-
-  const options = await fetch('/login/passkey/options', { method: 'POST' }).then(r => r.json());
-  if (options.error) {
-    message.textContent = options.error;
-    return;
-  }
-
-  options.challenge = decodeBase64Url(options.challenge);
-  options.allowCredentials = (options.allowCredentials || []).map(item => ({ ...item, id: decodeBase64Url(item.id) }));
-
-  const credential = await navigator.credentials.get({ publicKey: options });
-  const payload = {
-    id: credential.id,
-    rawId: encodeBase64Url(credential.rawId),
-    type: credential.type,
-    response: {
-      clientDataJSON: encodeBase64Url(credential.response.clientDataJSON),
-      authenticatorData: encodeBase64Url(credential.response.authenticatorData),
-      signature: encodeBase64Url(credential.response.signature),
-      userHandle: credential.response.userHandle ? encodeBase64Url(credential.response.userHandle) : null
+  try {
+    if (!window.isSecureContext) {
+      throw new Error('Passkeys require a secure context (HTTPS or localhost).');
     }
-  };
 
-  const result = await fetch('/login/passkey/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).then(r => r.json());
+    if (!window.PublicKeyCredential) {
+      throw new Error('This browser does not support WebAuthn passkeys.');
+    }
 
-  if (result.redirect) {
-    window.location.href = result.redirect;
-    return;
+    message.textContent = 'Waiting for browser passkey prompt...';
+    const options = await fetch('/login/passkey/options', { method: 'POST' }).then(r => r.json());
+    if (options.error) {
+      throw new Error(options.error);
+    }
+
+    options.challenge = decodeBase64Url(options.challenge);
+    options.allowCredentials = (options.allowCredentials || []).map(item => ({ ...item, id: decodeBase64Url(item.id) }));
+
+    const credential = await navigator.credentials.get({ publicKey: options });
+    if (!credential) {
+      throw new Error('Browser did not return a credential.');
+    }
+
+    const payload = {
+      id: credential.id,
+      rawId: encodeBase64Url(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: encodeBase64Url(credential.response.clientDataJSON),
+        authenticatorData: encodeBase64Url(credential.response.authenticatorData),
+        signature: encodeBase64Url(credential.response.signature),
+        userHandle: credential.response.userHandle ? encodeBase64Url(credential.response.userHandle) : null
+      }
+    };
+
+    const result = await fetch('/login/passkey/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+
+    if (result.redirect) {
+      window.location.href = result.redirect;
+      return;
+    }
+
+    throw new Error(result.error || 'Passkey login failed.');
+  } catch (error) {
+    message.textContent = error?.message || String(error);
   }
-
-  message.textContent = result.error || 'Passkey login failed.';
 });
 </script>
