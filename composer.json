@@ -1,0 +1,14 @@
+{
+  "name": "cyberblog/cyberblog",
+  "description": "Cybersecurity-themed blog with passkey auth and WordPress import tooling.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  }
+}
