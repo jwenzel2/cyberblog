@@ -106,11 +106,14 @@ final class InstallerService
         try {
             $pdo = Database::tryServerConnection($config);
             $pdo->exec(sprintf('CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci', $config['database']));
+            $pdo->exec(sprintf('ALTER DATABASE `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci', $config['database']));
             $pdo->exec(sprintf('USE `%s`', $config['database']));
+            $pdo->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
             $schema = file_get_contents(app_path('database/schema.sql')) ?: '';
             foreach (array_filter(array_map('trim', explode(';', $schema))) as $statement) {
                 $pdo->exec($statement);
             }
+            $this->enforceUtf8mb4($pdo);
             Database::reconnect($pdo);
         } catch (PDOException $e) {
             return [null, [
@@ -165,6 +168,17 @@ final class InstallerService
 
         file_put_contents(app_path('.env'), $content);
         \App\Core\Env::load(app_path('.env'));
+    }
+
+    private function enforceUtf8mb4(\PDO $pdo): void
+    {
+        $tables = ['users', 'passkeys', 'recovery_codes', 'media', 'posts', 'categories', 'category_post', 'imports'];
+        foreach ($tables as $table) {
+            $pdo->exec(sprintf(
+                'ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+                $table
+            ));
+        }
     }
 
     private function ensureStorageDirectories(): array
