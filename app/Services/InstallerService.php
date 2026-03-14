@@ -113,7 +113,16 @@ final class InstallerService
             }
             Database::reconnect($pdo);
         } catch (PDOException $e) {
-            return [null, ['Database initialization failed: ' . $e->getMessage()]];
+            return [null, [
+                'Database initialization failed: ' . $e->getMessage(),
+                sprintf(
+                    'Attempted connection with host=%s port=%s database=%s username=%s',
+                    $config['host'],
+                    $config['port'],
+                    $config['database'],
+                    $config['username']
+                ),
+            ]];
         }
 
         $this->writeEnv($config, $adminEmail);
