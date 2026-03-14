@@ -20,9 +20,9 @@ spl_autoload_register(function (string $class): void {
 \App\Core\Env::load(app_path('.env'));
 \App\Core\Session::start();
 
-foreach (['storage', 'storage/tmp', 'storage/media', 'storage/logs'] as $dir) {
+foreach (['storage', 'storage/tmp', 'storage/media', 'storage/logs', 'storage/cache'] as $dir) {
     $full = app_path($dir);
     if (!is_dir($full)) {
-        @mkdir($full, 0775, true);
+        mkdir($full, 0775, true);
     }
 }

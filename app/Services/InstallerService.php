@@ -14,6 +14,8 @@ final class InstallerService
 {
     public function checks(): array
     {
+        $storageReady = $this->ensureStorageDirectories();
+
         return [
             'PHP 8.2+' => version_compare(PHP_VERSION, '8.2.0', '>='),
             'pdo_mysql extension' => extension_loaded('pdo_mysql'),
@@ -22,7 +24,7 @@ final class InstallerService
             'json extension' => extension_loaded('json'),
             'fileinfo extension' => extension_loaded('fileinfo'),
             'phar extension' => extension_loaded('phar'),
-            'storage writable' => is_writable(app_path('storage')) || is_writable(app_path()),
+            'storage directories ready' => $storageReady === [],
         ];
     }
 
@@ -52,8 +54,36 @@ final class InstallerService
         $adminEmail = trim((string) ($input['admin_email'] ?? ''));
         $adminDisplayName = trim((string) ($input['admin_display_name'] ?? 'Admin'));
 
-        if (!$config['app_url'] || !$config['rp_id'] || !$config['database'] || !$config['username'] || !$adminEmail) {
-            return [null, ['All required fields must be completed.']];
+        if ($config['rp_id'] === '' && $config['app_url'] !== '') {
+            $config['rp_id'] = parse_url($config['app_url'], PHP_URL_HOST) ?: '';
+        }
+
+        $fieldErrors = [];
+        if ($config['app_url'] === '') {
+            $fieldErrors[] = 'App URL is required.';
+        }
+        if ($config['rp_id'] === '') {
+            $fieldErrors[] = 'RP ID is required.';
+        }
+        if ($config['database'] === '') {
+            $fieldErrors[] = 'Database name is required.';
+        }
+        if ($config['username'] === '') {
+            $fieldErrors[] = 'Database username is required.';
+        }
+        if ($adminEmail === '') {
+            $fieldErrors[] = 'Admin email is required.';
+        } elseif (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+            $fieldErrors[] = 'Admin email must be a valid email address.';
+        }
+
+        $storageErrors = $this->ensureStorageDirectories();
+        if ($storageErrors) {
+            $fieldErrors = array_merge($fieldErrors, $storageErrors);
+        }
+
+        if ($fieldErrors) {
+            return [null, $fieldErrors];
         }
 
         try {
@@ -109,5 +139,24 @@ final class InstallerService
 
         file_put_contents(app_path('.env'), $content);
         \App\Core\Env::load(app_path('.env'));
+    }
+
+    private function ensureStorageDirectories(): array
+    {
+        $errors = [];
+
+        foreach (['storage', 'storage/tmp', 'storage/media', 'storage/logs', 'storage/cache'] as $dir) {
+            $fullPath = app_path($dir);
+            if (!is_dir($fullPath) && !mkdir($fullPath, 0775, true) && !is_dir($fullPath)) {
+                $errors[] = 'Failed to create directory: ' . $dir;
+                continue;
+            }
+
+            if (!is_writable($fullPath)) {
+                $errors[] = 'Directory is not writable: ' . $dir;
+            }
+        }
+
+        return $errors;
     }
 }
