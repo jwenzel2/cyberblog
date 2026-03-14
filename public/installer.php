@@ -6,12 +6,24 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 
 use App\Services\InstallerService;
 
+$installed = is_file(app_path('.env')) && \App\Core\Env::get('APP_INSTALLED', '0') === '1';
+if ($installed && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if (\App\Core\Auth::check()) {
+        \App\Core\Response::redirect('/admin/security/bootstrap');
+    }
+
+    \App\Core\Response::redirect('/login');
+}
+
 $service = new InstallerService();
 $result = null;
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     [$result, $errors] = $service->handle($_POST, $_FILES);
+    if ($result && $errors === []) {
+        \App\Core\Response::redirect('/admin/security/bootstrap');
+    }
 }
 
 $checks = $service->checks();

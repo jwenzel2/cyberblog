@@ -20,8 +20,18 @@ final class WordPressImporter
         }
 
         $checksum = hash_file('sha256', $archivePath);
-        if (ImportRun::findByChecksum($checksum)) {
-            throw new RuntimeException('This archive has already been imported.');
+        $existingImport = ImportRun::findByChecksum($checksum);
+        if ($existingImport) {
+            if (($existingImport['status'] ?? '') === 'completed') {
+                return [
+                    'posts' => (int) $existingImport['imported_posts'],
+                    'media' => (int) $existingImport['imported_media'],
+                    'categories' => (int) $existingImport['imported_categories'],
+                    'skipped' => true,
+                ];
+            }
+
+            throw new RuntimeException('This archive already has an import record with status: ' . $existingImport['status']);
         }
 
         $importId = ImportRun::create(basename($archivePath), $checksum);

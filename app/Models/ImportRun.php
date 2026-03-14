@@ -20,6 +20,13 @@ final class ImportRun
         return $stmt->fetch() ?: null;
     }
 
+    public static function find(int $id): ?array
+    {
+        $stmt = Database::connection()->prepare('SELECT * FROM imports WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch() ?: null;
+    }
+
     public static function create(string $archiveName, string $checksum): int
     {
         $stmt = Database::connection()->prepare(
