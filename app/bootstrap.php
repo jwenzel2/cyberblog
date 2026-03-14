@@ -19,6 +19,7 @@ spl_autoload_register(function (string $class): void {
 
 \App\Core\Env::load(app_path('.env'));
 \App\Core\Session::start();
+\App\Core\ErrorHandler::register();
 
 foreach (['storage', 'storage/tmp', 'storage/media', 'storage/logs', 'storage/cache'] as $dir) {
     $full = app_path($dir);

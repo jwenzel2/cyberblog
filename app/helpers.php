@@ -36,3 +36,8 @@ function env_bool(string $value, bool $default = false): bool
         default => $default,
     };
 }
+
+function app_debug(): bool
+{
+    return env_bool((string) \App\Core\Env::get('APP_DEBUG', '1'), true);
+}

@@ -8,11 +8,7 @@ use App\Services\InstallerService;
 
 $installed = is_file(app_path('.env')) && \App\Core\Env::get('APP_INSTALLED', '0') === '1';
 if ($installed && $_SERVER['REQUEST_METHOD'] !== 'POST') {
-    if (\App\Core\Auth::check()) {
-        \App\Core\Response::redirect('/admin/security/bootstrap');
-    }
-
-    \App\Core\Response::redirect('/login');
+    $alreadyInstalledMessage = 'CyberBlog is already installed.';
 }
 
 $service = new InstallerService();
@@ -68,6 +64,14 @@ $checks = $service->checks();
         <h2>Installation complete</h2>
         <div><?= htmlspecialchars($result) ?></div>
         <p><a href="/" style="color:#9ad4ff;">Open CyberBlog</a></p>
+      </div>
+    <?php endif; ?>
+
+    <?php if (!empty($alreadyInstalledMessage)): ?>
+      <div class="card ok">
+        <h2>Already Installed</h2>
+        <div><?= htmlspecialchars($alreadyInstalledMessage) ?></div>
+        <p><a href="/" style="color:#9ad4ff;">Open Blog</a> · <a href="/login" style="color:#9ad4ff;">Open Login</a> · <a href="/admin/security/bootstrap" style="color:#9ad4ff;">Finish Security Setup</a></p>
       </div>
     <?php endif; ?>
 
