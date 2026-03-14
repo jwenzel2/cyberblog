@@ -60,6 +60,7 @@ $checks = $service->checks();
     <?php endif; ?>
 
     <form class="card" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="installer_form" value="1">
       <h2>Application</h2>
       <label>App URL</label>
       <input name="app_url" required value="<?= htmlspecialchars($_POST['app_url'] ?? 'http://localhost') ?>">
@@ -85,6 +86,9 @@ $checks = $service->checks();
       <input name="admin_display_name" required value="<?= htmlspecialchars($_POST['admin_display_name'] ?? 'Admin') ?>">
 
       <h2>WordPress Import (optional)</h2>
+      <p style="color:#8fa9c7; margin-top:0;">
+        If you upload a large `.tar.gz`, make sure `post_max_size` and `upload_max_filesize` are larger than the archive.
+      </p>
       <label>Archive (.tar.gz)</label>
       <input type="file" name="wordpress_archive" accept=".tar.gz,application/gzip">
 

@@ -31,6 +31,23 @@ final class InstallerService
     public function handle(array $input, array $files): array
     {
         $errors = [];
+
+        if ($input === [] && $files === []) {
+            $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+            if ($contentLength > 0) {
+                return [null, [
+                    'The installer form submission was received as an empty request.',
+                    'This usually means PHP rejected the multipart POST before parsing it.',
+                    'Check php.ini settings for post_max_size and upload_max_filesize, then retry.',
+                ]];
+            }
+
+            return [null, [
+                'The installer did not receive any form fields.',
+                'Check that the request is reaching PHP correctly and that the web server allows POST requests to installer.php.',
+            ]];
+        }
+
         foreach ($this->checks() as $label => $passed) {
             if (!$passed) {
                 $errors[] = "{$label} is required.";
