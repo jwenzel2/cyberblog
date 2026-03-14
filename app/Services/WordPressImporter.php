@@ -22,7 +22,8 @@ final class WordPressImporter
         $checksum = hash_file('sha256', $archivePath);
         $existingImport = ImportRun::findByChecksum($checksum);
         if ($existingImport) {
-            if (($existingImport['status'] ?? '') === 'completed') {
+            $existingCounts = (int) $existingImport['imported_posts'] + (int) $existingImport['imported_media'] + (int) $existingImport['imported_categories'];
+            if (($existingImport['status'] ?? '') === 'completed' && $existingCounts > 0) {
                 return [
                     'posts' => (int) $existingImport['imported_posts'],
                     'media' => (int) $existingImport['imported_media'],
@@ -31,10 +32,17 @@ final class WordPressImporter
                 ];
             }
 
-            throw new RuntimeException('This archive already has an import record with status: ' . $existingImport['status']);
+            $importId = (int) $existingImport['id'];
+            ImportRun::update($importId, [
+                'status' => 'pending',
+                'imported_posts' => 0,
+                'imported_media' => 0,
+                'imported_categories' => 0,
+                'warnings' => json_encode(['Retrying import for an archive with a previous zero-count or failed import.'], JSON_PRETTY_PRINT),
+            ]);
+        } else {
+            $importId = ImportRun::create(basename($archivePath), $checksum);
         }
-
-        $importId = ImportRun::create(basename($archivePath), $checksum);
         $warnings = [];
 
         try {
@@ -130,7 +138,7 @@ final class WordPressImporter
         try {
             while (($line = fgets($handle)) !== false) {
                 if ($currentTable === null) {
-                    if (!preg_match('/^INSERT INTO `([^`]+)` \(([^)]+)\) VALUES\s*/i', $line, $matches)) {
+                    if (!preg_match('/^INSERT INTO `([^`]+)`/i', $line, $matches)) {
                         continue;
                     }
 
@@ -150,8 +158,11 @@ final class WordPressImporter
                 }
 
                 $match = [];
-                if (preg_match('/^INSERT INTO `([^`]+)` \(([^)]+)\) VALUES\s*(.+);$/is', trim($statement), $match)) {
-                    $columns = array_map(static fn(string $column): string => trim($column, " `"), explode(',', $match[2]));
+                if (preg_match('/^INSERT INTO `([^`]+)`(?: \(([^)]+)\))?\s+VALUES\s*(.+);$/is', trim($statement), $match)) {
+                    $columns = !empty($match[2])
+                        ? array_map(static fn(string $column): string => trim($column, " `"), explode(',', $match[2]))
+                        : $this->defaultColumnsForTable($currentTable);
+
                     foreach ($this->splitTuples($match[3]) as $tuple) {
                         $values = $this->parseTuple($tuple);
                         if (count($values) !== count($columns)) {
@@ -169,6 +180,23 @@ final class WordPressImporter
         }
 
         return $parsed;
+    }
+
+    private function defaultColumnsForTable(string $table): array
+    {
+        return match ($table) {
+            'posts' => [
+                'ID', 'post_author', 'post_date', 'post_date_gmt', 'post_content', 'post_title', 'post_excerpt',
+                'post_status', 'comment_status', 'ping_status', 'post_password', 'post_name', 'to_ping', 'pinged',
+                'post_modified', 'post_modified_gmt', 'post_content_filtered', 'post_parent', 'guid',
+                'menu_order', 'post_type', 'post_mime_type', 'comment_count',
+            ],
+            'terms' => ['term_id', 'name', 'slug', 'term_group'],
+            'term_taxonomy' => ['term_taxonomy_id', 'term_id', 'taxonomy', 'description', 'parent', 'count'],
+            'term_relationships' => ['object_id', 'term_taxonomy_id', 'term_order'],
+            'postmeta' => ['meta_id', 'post_id', 'meta_key', 'meta_value'],
+            default => throw new RuntimeException('No default column map exists for table: ' . $table),
+        };
     }
 
     private function statementComplete(string $statement): bool
