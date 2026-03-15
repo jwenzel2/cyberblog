@@ -53,8 +53,8 @@ final class User
     public static function createFromArray(array $data): int
     {
         $stmt = Database::connection()->prepare(
-            'INSERT INTO users (email, display_name, role, password_hash, totp_secret, totp_enabled, must_setup_auth, created_at, updated_at)
-             VALUES (:email, :display_name, :role, :password_hash, :totp_secret, :totp_enabled, :must_setup_auth, :created_at, :updated_at)'
+            'INSERT INTO users (email, display_name, role, password_hash, totp_secret, totp_enabled, failed_login_attempts, lock_until, admin_unlock_required, must_setup_auth, created_at, updated_at)
+             VALUES (:email, :display_name, :role, :password_hash, :totp_secret, :totp_enabled, 0, NULL, 0, :must_setup_auth, :created_at, :updated_at)'
         );
         $stmt->execute([
             'email' => mb_strtolower(trim((string) $data['email'])),
@@ -155,6 +155,81 @@ final class User
     public static function hasRole(array $user, string ...$roles): bool
     {
         return in_array((string) $user['role'], $roles, true);
+    }
+
+    public static function admins(): array
+    {
+        $stmt = Database::connection()->prepare("SELECT * FROM users WHERE role = :role ORDER BY id ASC");
+        $stmt->execute(['role' => self::ROLE_ADMIN]);
+        return $stmt->fetchAll();
+    }
+
+    public static function isTemporarilyLocked(array $user): bool
+    {
+        return !empty($user['lock_until']) && strtotime((string) $user['lock_until']) > time();
+    }
+
+    public static function isAdminLocked(array $user): bool
+    {
+        return !empty($user['admin_unlock_required']);
+    }
+
+    public static function recordLoginFailure(int $id): array
+    {
+        $user = self::find($id);
+        if (!$user) {
+            return ['state' => 'unknown'];
+        }
+
+        $attempts = (int) ($user['failed_login_attempts'] ?? 0) + 1;
+        $lockUntil = null;
+        $adminUnlockRequired = 0;
+        $state = 'failed';
+
+        if ($attempts >= 7) {
+            $adminUnlockRequired = 1;
+            $state = 'admin_locked';
+        } elseif ($attempts >= 4) {
+            $lockUntil = gmdate('Y-m-d H:i:s', time() + (15 * 60));
+            $state = 'temporary_lock';
+        }
+
+        $stmt = Database::connection()->prepare(
+            'UPDATE users
+             SET failed_login_attempts = :failed_login_attempts, lock_until = :lock_until, admin_unlock_required = :admin_unlock_required, updated_at = :updated_at
+             WHERE id = :id'
+        );
+        $stmt->execute([
+            'id' => $id,
+            'failed_login_attempts' => $attempts,
+            'lock_until' => $lockUntil,
+            'admin_unlock_required' => $adminUnlockRequired,
+            'updated_at' => now(),
+        ]);
+
+        return [
+            'state' => $state,
+            'attempts' => $attempts,
+            'lock_until' => $lockUntil,
+        ];
+    }
+
+    public static function clearLoginFailures(int $id): void
+    {
+        $stmt = Database::connection()->prepare(
+            'UPDATE users
+             SET failed_login_attempts = 0, lock_until = NULL, admin_unlock_required = 0, updated_at = :updated_at
+             WHERE id = :id'
+        );
+        $stmt->execute([
+            'id' => $id,
+            'updated_at' => now(),
+        ]);
+    }
+
+    public static function unlock(int $id): void
+    {
+        self::clearLoginFailures($id);
     }
 
     public static function canManagePosts(array $user): bool

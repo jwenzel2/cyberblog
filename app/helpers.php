@@ -41,3 +41,21 @@ function app_debug(): bool
 {
     return env_bool((string) \App\Core\Env::get('APP_DEBUG', '1'), true);
 }
+
+function request_ip(): string
+{
+    $forwarded = (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');
+    if ($forwarded !== '') {
+        $parts = array_map('trim', explode(',', $forwarded));
+        if ($parts !== []) {
+            return $parts[0];
+        }
+    }
+
+    return (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+}
+
+function request_user_agent(): string
+{
+    return trim((string) ($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown browser'));
+}

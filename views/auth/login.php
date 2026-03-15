@@ -20,6 +20,7 @@
     </div>
   </div>
   <p><a href="/login/recovery">Can't log in?</a></p>
+  <p class="muted">Need administrator help? <a href="/support/contact?email=<?= urlencode($oldEmail) ?>">Contact an admin</a>.</p>
 </div>
 <script>
 const decodeBase64Url = (value) => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')), c => c.charCodeAt(0));

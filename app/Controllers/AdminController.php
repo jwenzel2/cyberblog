@@ -327,6 +327,20 @@ final class AdminController
         Response::redirect('/admin/users');
     }
 
+    public function unlockUser(string $id): void
+    {
+        Auth::requireAdmin();
+        $this->verifyCsrf();
+        $user = User::find((int) $id);
+        if (!$user) {
+            Response::abort(404, 'User not found.');
+        }
+
+        User::unlock((int) $id);
+        Session::flash('status', 'User unlocked.');
+        Response::redirect('/admin/users');
+    }
+
     public function preferences(): void
     {
         Auth::requireAdmin();
@@ -342,6 +356,16 @@ final class AdminController
         Auth::requireAdmin();
         $this->verifyCsrf();
         Preference::set('articles_per_page', (string) max(1, min(100, (int) ($_POST['articles_per_page'] ?? 10))));
+        Preference::set('smtp_enabled', !empty($_POST['smtp_enabled']) ? '1' : '0');
+        Preference::set('smtp_host', trim((string) ($_POST['smtp_host'] ?? '')));
+        Preference::set('smtp_port', (string) max(1, (int) ($_POST['smtp_port'] ?? 587)));
+        Preference::set('smtp_username', trim((string) ($_POST['smtp_username'] ?? '')));
+        if (array_key_exists('smtp_password', $_POST) && trim((string) $_POST['smtp_password']) !== '') {
+            Preference::set('smtp_password', (string) $_POST['smtp_password']);
+        }
+        Preference::set('smtp_encryption', in_array($_POST['smtp_encryption'] ?? 'tls', ['none', 'tls', 'ssl'], true) ? (string) $_POST['smtp_encryption'] : 'tls');
+        Preference::set('smtp_from_email', trim((string) ($_POST['smtp_from_email'] ?? '')));
+        Preference::set('smtp_from_name', trim((string) ($_POST['smtp_from_name'] ?? 'CyberBlog')));
         Session::flash('status', 'Preferences updated.');
         Response::redirect('/admin/preferences');
     }

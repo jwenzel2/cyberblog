@@ -16,6 +16,9 @@ final class SchemaManager
         self::addColumnIfMissing($pdo, 'users', 'password_hash', 'VARCHAR(255) NULL AFTER `role`');
         self::addColumnIfMissing($pdo, 'users', 'totp_secret', 'VARCHAR(64) NULL AFTER `password_hash`');
         self::addColumnIfMissing($pdo, 'users', 'totp_enabled', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER `totp_secret`');
+        self::addColumnIfMissing($pdo, 'users', 'failed_login_attempts', 'INT UNSIGNED NOT NULL DEFAULT 0 AFTER `totp_enabled`');
+        self::addColumnIfMissing($pdo, 'users', 'lock_until', 'DATETIME NULL AFTER `failed_login_attempts`');
+        self::addColumnIfMissing($pdo, 'users', 'admin_unlock_required', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER `lock_until`');
 
         self::addColumnIfMissing($pdo, 'posts', 'author_id', 'INT UNSIGNED NULL AFTER `featured_media_id`');
         self::addForeignKeyIfMissing(

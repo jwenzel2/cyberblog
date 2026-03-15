@@ -7,6 +7,7 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\PublicController;
+use App\Controllers\SupportController;
 use App\Core\Router;
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -31,6 +32,8 @@ $router = new Router();
 $router->get('/', [PublicController::class, 'home']);
 $router->get('/post/{slug}', [PublicController::class, 'post']);
 $router->get('/category/{slug}', [PublicController::class, 'category']);
+$router->get('/support/contact', [SupportController::class, 'showContact']);
+$router->post('/support/contact', [SupportController::class, 'submitContact']);
 
 $router->get('/login', [AuthController::class, 'showLogin']);
 $router->post('/login/password', [AuthController::class, 'loginPassword']);
@@ -61,6 +64,7 @@ $router->post('/admin/imports', [AdminController::class, 'runImport']);
 $router->get('/admin/users', [AdminController::class, 'users']);
 $router->post('/admin/users', [AdminController::class, 'storeUser']);
 $router->post('/admin/users/{id}/edit', [AdminController::class, 'updateUser']);
+$router->post('/admin/users/{id}/unlock', [AdminController::class, 'unlockUser']);
 $router->get('/admin/preferences', [AdminController::class, 'preferences']);
 $router->post('/admin/preferences', [AdminController::class, 'updatePreferences']);
 $router->get('/admin/security', [AdminController::class, 'security']);

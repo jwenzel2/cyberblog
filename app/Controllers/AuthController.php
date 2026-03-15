@@ -11,6 +11,7 @@ use App\Core\View;
 use App\Models\PasskeyCredential;
 use App\Models\RecoveryCode;
 use App\Models\User;
+use App\Services\LoginNotificationService;
 use App\Services\TotpService;
 use App\Services\WebAuthnService;
 use RuntimeException;
@@ -34,9 +35,12 @@ final class AuthController
         Session::put('login.email', $email);
 
         $user = User::findByEmail($email);
+        if ($user) {
+            $this->abortIfLocked($user, '/login');
+        }
+
         if (!$user || !User::verifyPassword($user, $password)) {
-            Session::flash('error', 'Invalid email or password.');
-            Response::redirect('/login');
+            $this->handleFailedAttempt($user, '/login', 'Invalid email or password.');
         }
 
         if (!empty($user['totp_enabled'])) {
@@ -44,8 +48,7 @@ final class AuthController
             Response::redirect('/login/mfa');
         }
 
-        Auth::login((int) $user['id']);
-        Response::redirect('/admin');
+        $this->finalizeLogin($user, 'password');
     }
 
     public function showMfa(): void
@@ -71,14 +74,14 @@ final class AuthController
             Response::redirect('/login');
         }
 
+        $this->abortIfLocked($user, '/login');
+
         $code = trim((string) ($_POST['totp_code'] ?? ''));
         if (!(new TotpService())->verifyCode((string) $user['totp_secret'], $code)) {
-            Session::flash('error', 'Invalid authentication code.');
-            Response::redirect('/login/mfa');
+            $this->handleFailedAttempt($user, '/login/mfa', 'Invalid authentication code.');
         }
 
-        Auth::login((int) $user['id']);
-        Response::redirect('/admin');
+        $this->finalizeLogin($user, 'password + totp');
     }
 
     public function passkeyOptions(): void
@@ -90,8 +93,16 @@ final class AuthController
             Response::json(['error' => 'Unknown account.'], 422);
         }
 
+        if (User::isAdminLocked($user)) {
+            Response::json(['error' => 'This account is locked until an administrator unlocks it.'], 423);
+        }
+        if (User::isTemporarilyLocked($user)) {
+            Response::json(['error' => 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.'], 423);
+        }
+
         $credentials = PasskeyCredential::forUser((int) $user['id']);
         if ($credentials === []) {
+            $this->recordFailedAttempt($user);
             Response::json(['error' => 'No passkeys are registered for this account.'], 422);
         }
 
@@ -105,14 +116,36 @@ final class AuthController
         $credentialId = (string) ($payload['id'] ?? '');
         $credential = PasskeyCredential::findByCredentialId($credentialId);
         if (!$credential) {
+            $email = (string) Session::get('login.email', '');
+            $user = $email !== '' ? User::findByEmail($email) : null;
+            if ($user) {
+                $this->recordFailedAttempt($user);
+            }
             Response::json(['error' => 'Unknown passkey.'], 422);
         }
 
         try {
+            $user = User::find((int) $credential['user_id']);
+            if (!$user) {
+                Response::json(['error' => 'Unknown account.'], 422);
+            }
+            if (User::isAdminLocked($user)) {
+                Response::json(['error' => 'This account is locked until an administrator unlocks it.'], 423);
+            }
+            if (User::isTemporarilyLocked($user)) {
+                Response::json(['error' => 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.'], 423);
+            }
+
             (new WebAuthnService())->verifyAuthentication($payload, $credential);
+            User::clearLoginFailures((int) $user['id']);
             Auth::login((int) $credential['user_id']);
+            (new LoginNotificationService())->sendLoginNotice($user, 'passkey', request_ip(), request_user_agent());
             Response::json(['redirect' => '/admin']);
         } catch (RuntimeException $e) {
+            $user = User::find((int) $credential['user_id']);
+            if ($user) {
+                $this->recordFailedAttempt($user);
+            }
             Response::json(['error' => $e->getMessage()], 422);
         }
     }
@@ -139,12 +172,15 @@ final class AuthController
             Response::redirect('/login');
         }
 
+        $this->abortIfLocked($user, '/login/recovery');
+
         if (!$code || !RecoveryCode::consume((int) $user['id'], $code)) {
-            Session::flash('error', 'Recovery code invalid or already used.');
-            Response::redirect('/login/recovery');
+            $this->handleFailedAttempt($user, '/login/recovery', 'Recovery code invalid or already used.');
         }
 
+        User::clearLoginFailures((int) $user['id']);
         Auth::login((int) $user['id']);
+        (new LoginNotificationService())->sendLoginNotice($user, 'recovery code', request_ip(), request_user_agent());
         Session::flash('status', 'Recovery code accepted. Update your security settings now.');
         Response::redirect('/admin/security');
     }
@@ -153,5 +189,63 @@ final class AuthController
     {
         Auth::logout();
         Response::redirect('/login');
+    }
+
+    private function finalizeLogin(array $user, string $method): void
+    {
+        User::clearLoginFailures((int) $user['id']);
+        Auth::login((int) $user['id']);
+        (new LoginNotificationService())->sendLoginNotice($user, $method, request_ip(), request_user_agent());
+        Response::redirect('/admin');
+    }
+
+    private function abortIfLocked(array $user, string $redirect): void
+    {
+        if (User::isAdminLocked($user)) {
+            Session::flash('error', 'This account is locked until an administrator unlocks it.');
+            Session::flash('status', 'If you need help, use the support form.');
+            Response::redirect($redirect);
+        }
+
+        if (User::isTemporarilyLocked($user)) {
+            Session::flash('error', 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.');
+            Response::redirect($redirect);
+        }
+    }
+
+    private function handleFailedAttempt(?array $user, string $redirect, string $defaultMessage): void
+    {
+        if ($user) {
+            $result = $this->recordFailedAttempt($user);
+            Session::flash('error', match ($result['state']) {
+                'temporary_lock' => 'Too many failed attempts. This account is locked until ' . ($result['lock_until'] ?? '') . ' UTC.',
+                'admin_locked' => 'This account is locked until an administrator unlocks it.',
+                default => $defaultMessage,
+            });
+        } else {
+            Session::flash('error', $defaultMessage);
+        }
+
+        Response::redirect($redirect);
+    }
+
+    private function recordFailedAttempt(array $user): array
+    {
+        $result = User::recordLoginFailure((int) $user['id']);
+        $notifier = new LoginNotificationService();
+
+        if (($result['state'] ?? '') === 'temporary_lock' && (int) ($result['attempts'] ?? 0) === 4) {
+            $notifier->sendTemporaryLockNotice($user, (string) ($result['lock_until'] ?? ''));
+        }
+
+        if (($result['state'] ?? '') === 'admin_locked' && (int) ($result['attempts'] ?? 0) === 7) {
+            $notifier->sendAdminLockNotice($user);
+        }
+
+        if (($result['state'] ?? '') !== 'failed') {
+            Session::forget('pending_login_user_id');
+        }
+
+        return $result;
     }
 }

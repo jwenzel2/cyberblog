@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NULL,
   totp_secret VARCHAR(64) NULL,
   totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  failed_login_attempts INT UNSIGNED NOT NULL DEFAULT 0,
+  lock_until DATETIME NULL,
+  admin_unlock_required TINYINT(1) NOT NULL DEFAULT 0,
   must_setup_auth TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL

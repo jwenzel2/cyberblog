@@ -15,6 +15,9 @@
           <td>
             <div class="muted">Password: <?= !empty($user['password_hash']) ? 'set' : 'missing' ?></div>
             <div class="muted">TOTP: <?= !empty($user['totp_enabled']) ? 'enabled' : 'disabled' ?></div>
+            <div class="muted">Failed attempts: <?= (int) ($user['failed_login_attempts'] ?? 0) ?></div>
+            <div class="muted">Temporary lock: <?= !empty($user['lock_until']) ? htmlspecialchars((string) $user['lock_until']) . ' UTC' : 'none' ?></div>
+            <div class="muted">Admin unlock required: <?= !empty($user['admin_unlock_required']) ? 'yes' : 'no' ?></div>
           </td>
           <td>
             <form method="post" action="/admin/users/<?= (int) $user['id'] ?>/edit">
@@ -30,6 +33,10 @@
               <label><input type="checkbox" name="must_setup_auth" value="1" <?= !empty($user['must_setup_auth']) ? 'checked' : '' ?>> Require setup</label>
               <label><input type="checkbox" name="reset_auth" value="1"> Reset TOTP and require re-enrollment</label>
               <button type="submit">Save user</button>
+            </form>
+            <form method="post" action="/admin/users/<?= (int) $user['id'] ?>/unlock">
+              <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+              <button type="submit">Unlock account</button>
             </form>
           </td>
         </tr>
