@@ -1,12 +1,32 @@
 <div class="card" style="max-width:860px; margin:0 auto;">
   <h1>Finish Security Setup</h1>
-  <p>Before using the admin area, register at least one passkey and save the generated recovery codes.</p>
+  <p>Before using the admin area freely, keep a password on the account, then configure either an authenticator app or a passkey, and save recovery codes for emergencies only.</p>
   <p class="muted">Use a real hostname for passkeys, not a raw IP address. Example: `https://cyberblog.lan` mapped to your server in local DNS or your hosts file.</p>
   <?php if ($freshCodes): ?><div class="flash">Recovery codes: <?= htmlspecialchars($freshCodes) ?></div><?php endif; ?>
   <p>Registered passkeys: <strong><?= count($passkeys) ?></strong></p>
+  <p>Authenticator app: <strong><?= !empty($user['totp_enabled']) ? 'Enabled' : 'Disabled' ?></strong></p>
   <label>Passkey label</label>
   <input id="bootstrap-passkey-label" value="Primary passkey">
   <button type="button" id="bootstrap-register-passkey">Register first passkey</button>
+  <hr style="border-color:#1f3c64; margin:20px 0;">
+  <form method="post" action="/admin/security/totp/begin">
+    <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+    <button type="submit">Generate TOTP Secret</button>
+  </form>
+  <?php if ($pendingTotpSecret): ?>
+    <p class="muted">Secret: <code><?= htmlspecialchars($pendingTotpSecret) ?></code></p>
+    <p class="muted">OTPAuth URI: <code><?= htmlspecialchars((string) $totpUri) ?></code></p>
+    <form method="post" action="/admin/security/totp/verify">
+      <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+      <input name="totp_code" placeholder="123456" required>
+      <button type="submit">Verify authenticator app</button>
+    </form>
+  <?php endif; ?>
+  <hr style="border-color:#1f3c64; margin:20px 0;">
+  <form method="post" action="/admin/security/recovery/regenerate">
+    <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+    <button type="submit">Generate Recovery Codes</button>
+  </form>
   <p id="bootstrap-status" class="muted"></p>
 </div>
 <script>

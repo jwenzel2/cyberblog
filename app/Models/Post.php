@@ -5,26 +5,40 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Database;
+use PDO;
 
 final class Post
 {
-    public static function recentPublished(): array
+    public static function recentPublished(int $page = 1, int $perPage = 10): array
     {
-        $sql = "SELECT p.*, m.public_url AS featured_image
+        return self::paginate(
+            "SELECT p.*, m.public_url AS featured_image
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
                 WHERE p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= UTC_TIMESTAMP())
-                ORDER BY COALESCE(p.published_at, p.created_at) DESC";
-        return Database::connection()->query($sql)->fetchAll();
+                ORDER BY COALESCE(p.published_at, p.created_at) DESC",
+            [],
+            $page,
+            $perPage
+        );
     }
 
-    public static function allForAdmin(): array
+    public static function allForAdmin(array $user, int $page = 1, int $perPage = 10): array
     {
-        $sql = "SELECT p.*, m.public_url AS featured_image
+        $sql = "SELECT p.*, m.public_url AS featured_image, u.display_name AS author_name
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
-                ORDER BY p.updated_at DESC";
-        return Database::connection()->query($sql)->fetchAll();
+                LEFT JOIN users u ON u.id = p.author_id";
+        $params = [];
+
+        if ((string) $user['role'] === User::ROLE_AUTHOR) {
+            $sql .= ' WHERE p.author_id = :author_id';
+            $params['author_id'] = (int) $user['id'];
+        }
+
+        $sql .= ' ORDER BY p.updated_at DESC';
+
+        return self::paginate($sql, $params, $page, $perPage);
     }
 
     public static function find(int $id): ?array
@@ -57,18 +71,19 @@ final class Post
         return $post;
     }
 
-    public static function forCategory(int $categoryId): array
+    public static function forCategory(int $categoryId, int $page = 1, int $perPage = 10): array
     {
-        $stmt = Database::connection()->prepare(
+        return self::paginate(
             "SELECT p.*, m.public_url AS featured_image
              FROM posts p
              INNER JOIN category_post cp ON cp.post_id = p.id
              LEFT JOIN media m ON m.id = p.featured_media_id
              WHERE cp.category_id = :category_id AND p.status = 'published'
-             ORDER BY COALESCE(p.published_at, p.created_at) DESC"
+             ORDER BY COALESCE(p.published_at, p.created_at) DESC",
+            ['category_id' => $categoryId],
+            $page,
+            $perPage
         );
-        $stmt->execute(['category_id' => $categoryId]);
-        return $stmt->fetchAll();
     }
 
     public static function save(array $data, ?int $id = null): int
@@ -77,7 +92,7 @@ final class Post
             $stmt = Database::connection()->prepare(
                 'UPDATE posts
                  SET title = :title, slug = :slug, excerpt = :excerpt, body_html = :body_html, status = :status,
-                     published_at = :published_at, featured_media_id = :featured_media_id, updated_at = :updated_at
+                     published_at = :published_at, featured_media_id = :featured_media_id, author_id = :author_id, updated_at = :updated_at
                  WHERE id = :id'
             );
             $stmt->execute([
@@ -89,14 +104,15 @@ final class Post
                 'status' => $data['status'],
                 'published_at' => $data['published_at'] ?: null,
                 'featured_media_id' => $data['featured_media_id'] ?: null,
+                'author_id' => $data['author_id'] ?: null,
                 'updated_at' => now(),
             ]);
             return $id;
         }
 
         $stmt = Database::connection()->prepare(
-            'INSERT INTO posts (title, slug, excerpt, body_html, status, published_at, featured_media_id, legacy_wp_id, created_at, updated_at)
-             VALUES (:title, :slug, :excerpt, :body_html, :status, :published_at, :featured_media_id, :legacy_wp_id, :created_at, :updated_at)'
+            'INSERT INTO posts (title, slug, excerpt, body_html, status, published_at, featured_media_id, author_id, legacy_wp_id, created_at, updated_at)
+             VALUES (:title, :slug, :excerpt, :body_html, :status, :published_at, :featured_media_id, :author_id, :legacy_wp_id, :created_at, :updated_at)'
         );
         $stmt->execute([
             'title' => $data['title'],
@@ -106,6 +122,7 @@ final class Post
             'status' => $data['status'],
             'published_at' => $data['published_at'] ?: null,
             'featured_media_id' => $data['featured_media_id'] ?: null,
+            'author_id' => $data['author_id'] ?: null,
             'legacy_wp_id' => $data['legacy_wp_id'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
@@ -134,6 +151,15 @@ final class Post
         $stmt->execute(['id' => $id]);
     }
 
+    public static function canEdit(array $post, array $user): bool
+    {
+        if (User::hasRole($user, User::ROLE_ADMIN, User::ROLE_EDITOR)) {
+            return true;
+        }
+
+        return (string) $user['role'] === User::ROLE_AUTHOR && (int) ($post['author_id'] ?? 0) === (int) $user['id'];
+    }
+
     public static function findByLegacyWpId(int $legacyWpId): ?array
     {
         $stmt = Database::connection()->prepare('SELECT * FROM posts WHERE legacy_wp_id = :legacy_wp_id LIMIT 1');
@@ -156,5 +182,36 @@ final class Post
             static fn(array $row): int => (int) $row['category_id'],
             Database::connection()->query('SELECT category_id FROM category_post WHERE post_id = ' . (int) $postId)->fetchAll()
         );
+    }
+
+    private static function paginate(string $sql, array $params, int $page, int $perPage): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
+        $offset = ($page - 1) * $perPage;
+
+        $countSql = 'SELECT COUNT(*) FROM (' . $sql . ') AS paginated_rows';
+        $countStmt = Database::connection()->prepare($countSql);
+        foreach ($params as $key => $value) {
+            $countStmt->bindValue(':' . $key, $value);
+        }
+        $countStmt->execute();
+        $total = (int) $countStmt->fetchColumn();
+
+        $stmt = Database::connection()->prepare($sql . ' LIMIT :limit OFFSET :offset');
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'items' => $stmt->fetchAll(),
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'total_pages' => max(1, (int) ceil($total / $perPage)),
+        ];
     }
 }

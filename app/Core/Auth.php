@@ -21,15 +21,17 @@ final class Auth
 
     public static function login(int $userId): void
     {
+        Session::regenerate();
         Session::put('user_id', $userId);
+        Session::forget('pending_login_user_id');
     }
 
     public static function logout(): void
     {
-        Session::forget('user_id');
+        Session::destroy();
     }
 
-    public static function requireAdmin(bool $allowBootstrap = false): array
+    public static function requireRole(array|string $roles, bool $allowBootstrap = false): array
     {
         $user = self::user();
         if (!$user) {
@@ -40,6 +42,37 @@ final class Auth
             Response::redirect('/admin/security/bootstrap');
         }
 
+        $allowedRoles = (array) $roles;
+        if (!User::hasRole($user, ...$allowedRoles)) {
+            Response::abort(403, 'Forbidden');
+        }
+
         return $user;
+    }
+
+    public static function requireAdmin(bool $allowBootstrap = false): array
+    {
+        return self::requireRole(User::ROLE_ADMIN, $allowBootstrap);
+    }
+
+    public static function requireEditorOrAdmin(bool $allowBootstrap = false): array
+    {
+        return self::requireRole([User::ROLE_ADMIN, User::ROLE_EDITOR], $allowBootstrap);
+    }
+
+    public static function requireAuthenticated(bool $allowBootstrap = false): array
+    {
+        return self::requireRole([User::ROLE_ADMIN, User::ROLE_EDITOR, User::ROLE_AUTHOR], $allowBootstrap);
+    }
+
+    public static function beginPendingLogin(int $userId): void
+    {
+        Session::put('pending_login_user_id', $userId);
+    }
+
+    public static function pendingUser(): ?array
+    {
+        $id = Session::get('pending_login_user_id');
+        return $id ? User::find((int) $id) : null;
     }
 }

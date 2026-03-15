@@ -23,6 +23,11 @@ final class Session
         $_SESSION[$key] = $value;
     }
 
+    public static function has(string $key): bool
+    {
+        return array_key_exists($key, $_SESSION);
+    }
+
     public static function forget(string $key): void
     {
         unset($_SESSION[$key]);
@@ -45,6 +50,13 @@ final class Session
         $_SESSION = [];
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_destroy();
+        }
+    }
+
+    public static function regenerate(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
         }
     }
 }

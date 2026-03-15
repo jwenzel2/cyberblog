@@ -100,6 +100,8 @@ $checks = $service->checks();
       <input type="email" name="admin_email" required value="<?= htmlspecialchars($_POST['admin_email'] ?? '') ?>">
       <label>Display name</label>
       <input name="admin_display_name" required value="<?= htmlspecialchars($_POST['admin_display_name'] ?? 'Admin') ?>">
+      <label>Password</label>
+      <input type="password" name="admin_password" required>
 
       <h2>WordPress Import (optional)</h2>
       <p style="color:#8fa9c7; margin-top:0;">

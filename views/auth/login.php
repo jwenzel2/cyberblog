@@ -1,24 +1,25 @@
 <div class="card" style="max-width:720px; margin:0 auto;">
-  <h1>Admin Login</h1>
-  <p class="muted">Use a registered passkey. Recovery codes remain available for emergency access.</p>
+  <h1>Sign In</h1>
+  <p class="muted">Use password + MFA or a registered passkey. Recovery codes are reserved for emergency access.</p>
+  <?php if ($status): ?><div class="flash"><?= htmlspecialchars($status) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="flash danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-
-  <?php if (!$admin): ?>
-    <p>No admin account exists yet. Run the installer first.</p>
-  <?php else: ?>
-    <p>Admin: <strong><?= htmlspecialchars($admin['email']) ?></strong></p>
-    <p class="muted">Passkey login should be used from a hostname rather than a raw IP address.</p>
-    <button id="passkey-login" type="button">Login with passkey</button>
-    <p id="passkey-message" class="muted"></p>
-
-    <hr style="border-color:#1f3c64; margin:24px 0;">
-
-    <form method="post" action="/login/recovery">
-      <label>Recovery code</label>
-      <input name="recovery_code" placeholder="AB12CD34-EF56" required>
-      <button type="submit">Use recovery code</button>
+  <div class="two-col">
+    <form method="post" action="/login/password">
+      <label>Email</label>
+      <input id="login-email" type="email" name="email" value="<?= htmlspecialchars($oldEmail) ?>" required>
+      <label>Password</label>
+      <input type="password" name="password" autocomplete="current-password" required>
+      <button type="submit">Continue with password</button>
     </form>
-  <?php endif; ?>
+    <div>
+      <label>Email for passkey</label>
+      <input id="passkey-email" type="email" value="<?= htmlspecialchars($oldEmail) ?>" required>
+      <p class="muted">Passkey login should be used from a hostname rather than a raw IP address.</p>
+      <button id="passkey-login" type="button">Use passkey</button>
+      <p id="passkey-message" class="muted"></p>
+    </div>
+  </div>
+  <p><a href="/login/recovery">Can't log in?</a></p>
 </div>
 <script>
 const decodeBase64Url = (value) => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')), c => c.charCodeAt(0));
@@ -26,17 +27,19 @@ const encodeBase64Url = (buffer) => btoa(String.fromCharCode(...new Uint8Array(b
 
 document.getElementById('passkey-login')?.addEventListener('click', async () => {
   const message = document.getElementById('passkey-message');
+  const email = document.getElementById('passkey-email')?.value || '';
   try {
     if (!window.isSecureContext) {
       throw new Error('Passkeys require a secure context (HTTPS or localhost).');
     }
-
     if (!window.PublicKeyCredential) {
       throw new Error('This browser does not support WebAuthn passkeys.');
     }
 
     message.textContent = 'Waiting for browser passkey prompt...';
-    const options = await fetch('/login/passkey/options', { method: 'POST' }).then(r => r.json());
+    const formData = new FormData();
+    formData.set('email', email);
+    const options = await fetch('/login/passkey/options', { method: 'POST', body: formData }).then(r => r.json());
     if (options.error) {
       throw new Error(options.error);
     }

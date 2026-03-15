@@ -2,23 +2,30 @@
   <section class="card">
     <h1>Nested Categories</h1>
     <?php if ($flash): ?><div class="flash"><?= htmlspecialchars($flash) ?></div><?php endif; ?>
-    <?php
-    $renderTree = static function (array $items) use (&$renderTree): void {
-        echo '<ul class="tree">';
-        foreach ($items as $item) {
-            echo '<li><strong>' . htmlspecialchars($item['name']) . '</strong> <span class="muted">/' . htmlspecialchars($item['slug']) . '</span>';
-            if (!empty($item['description'])) {
-                echo '<div class="muted">' . htmlspecialchars($item['description']) . '</div>';
-            }
-            if (!empty($item['children'])) {
-                $renderTree($item['children']);
-            }
-            echo '</li>';
-        }
-        echo '</ul>';
-    };
-    $renderTree($categories);
-    ?>
+    <div class="stack">
+      <?php foreach ($flatCategories as $category): ?>
+        <form class="card" method="post" action="/admin/categories/<?= (int) $category['id'] ?>/edit" style="margin:0;">
+          <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+          <label>Name</label>
+          <input name="name" value="<?= htmlspecialchars($category['name']) ?>" required>
+          <label>Slug</label>
+          <input name="slug" value="<?= htmlspecialchars($category['slug']) ?>">
+          <label>Description</label>
+          <textarea name="description" style="min-height:100px;"><?= htmlspecialchars((string) ($category['description'] ?? '')) ?></textarea>
+          <label>Parent category</label>
+          <select name="parent_id">
+            <option value="">None</option>
+            <?php foreach ($flatCategories as $parent): ?>
+              <?php if ((int) $parent['id'] === (int) $category['id']) { continue; } ?>
+              <option value="<?= (int) $parent['id'] ?>" <?= (int) ($category['parent_id'] ?? 0) === (int) $parent['id'] ? 'selected' : '' ?>>
+                <?= str_repeat('-- ', (int) ($parent['depth'] ?? 0)) . htmlspecialchars($parent['name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit">Update Category</button>
+        </form>
+      <?php endforeach; ?>
+    </div>
   </section>
   <aside class="card">
     <h2>Create Category</h2>
@@ -34,7 +41,7 @@
       <select name="parent_id">
         <option value="">None</option>
         <?php foreach ($flatCategories as $category): ?>
-          <option value="<?= (int) $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+          <option value="<?= (int) $category['id'] ?>"><?= str_repeat('-- ', (int) ($category['depth'] ?? 0)) . htmlspecialchars($category['name']) ?></option>
         <?php endforeach; ?>
       </select>
       <button type="submit">Create Category</button>

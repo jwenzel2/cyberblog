@@ -1,7 +1,7 @@
 <div class="card">
   <h1>Dashboard</h1>
   <p>Signed in as <strong><?= htmlspecialchars($user['display_name']) ?></strong> (<?= htmlspecialchars($user['email']) ?>).</p>
-  <p class="muted">Use the admin navigation to manage posts, nested categories, media, imports, and passkeys.</p>
+  <p class="muted">Use the admin navigation to manage content, users, preferences, and security settings based on your role.</p>
 </div>
 
 <div class="grid">
@@ -21,12 +21,17 @@
     </table>
   </section>
   <aside class="card">
-    <h2>Recent Imports</h2>
-    <?php foreach (array_slice($imports, 0, 5) as $import): ?>
-      <div style="margin-bottom:12px;">
-        <div><?= htmlspecialchars($import['archive_name']) ?></div>
-        <div class="muted"><?= htmlspecialchars($import['status']) ?> · <?= htmlspecialchars($import['updated_at']) ?></div>
-      </div>
-    <?php endforeach; ?>
+    <?php if ($imports !== []): ?>
+      <h2>Recent Imports</h2>
+      <?php foreach (array_slice($imports, 0, 5) as $import): ?>
+        <div style="margin-bottom:12px;">
+          <div><?= htmlspecialchars($import['archive_name']) ?></div>
+          <div class="muted"><?= htmlspecialchars($import['status']) ?> · <?= htmlspecialchars($import['updated_at']) ?></div>
+        </div>
+      <?php endforeach; ?>
+    <?php else: ?>
+      <h2>Quick Summary</h2>
+      <div class="muted">You can create posts, manage your security settings, and browse categories from the dashboard.</div>
+    <?php endif; ?>
   </aside>
 </div>

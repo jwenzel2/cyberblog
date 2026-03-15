@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(190) NOT NULL UNIQUE,
   display_name VARCHAR(120) NOT NULL,
   role VARCHAR(40) NOT NULL DEFAULT 'admin',
+  password_hash VARCHAR(255) NULL,
+  totp_secret VARCHAR(64) NULL,
+  totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
   must_setup_auth TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL
@@ -52,10 +55,12 @@ CREATE TABLE IF NOT EXISTS posts (
   status VARCHAR(20) NOT NULL DEFAULT 'draft',
   published_at DATETIME NULL,
   featured_media_id INT UNSIGNED NULL,
+  author_id INT UNSIGNED NULL,
   legacy_wp_id BIGINT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
-  CONSTRAINT fk_posts_featured_media FOREIGN KEY (featured_media_id) REFERENCES media(id) ON DELETE SET NULL
+  CONSTRAINT fk_posts_featured_media FOREIGN KEY (featured_media_id) REFERENCES media(id) ON DELETE SET NULL,
+  CONSTRAINT fk_posts_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -88,5 +93,11 @@ CREATE TABLE IF NOT EXISTS imports (
   imported_categories INT UNSIGNED NOT NULL DEFAULT 0,
   warnings LONGTEXT NULL,
   created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS preferences (
+  `key` VARCHAR(120) PRIMARY KEY,
+  `value` TEXT NULL,
   updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

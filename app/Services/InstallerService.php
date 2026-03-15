@@ -70,6 +70,7 @@ final class InstallerService
 
         $adminEmail = trim((string) ($input['admin_email'] ?? ''));
         $adminDisplayName = trim((string) ($input['admin_display_name'] ?? 'Admin'));
+        $adminPassword = (string) ($input['admin_password'] ?? '');
 
         if ($config['rp_id'] === '' && $config['app_url'] !== '') {
             $config['rp_id'] = parse_url($config['app_url'], PHP_URL_HOST) ?: '';
@@ -93,6 +94,9 @@ final class InstallerService
         } elseif (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
             $fieldErrors[] = 'Admin email must be a valid email address.';
         }
+        if ($adminPassword === '') {
+            $fieldErrors[] = 'Admin password is required.';
+        }
 
         $storageErrors = $this->ensureStorageDirectories();
         if ($storageErrors) {
@@ -115,6 +119,7 @@ final class InstallerService
             }
             $this->enforceUtf8mb4($pdo);
             Database::reconnect($pdo);
+            SchemaManager::migrate();
         } catch (PDOException $e) {
             return [null, [
                 'Database initialization failed: ' . $e->getMessage(),
@@ -132,8 +137,17 @@ final class InstallerService
 
         $admin = User::findByEmail($adminEmail);
         if (!$admin) {
-            $adminId = User::create($adminEmail, $adminDisplayName);
+            $adminId = User::createFromArray([
+                'email' => $adminEmail,
+                'display_name' => $adminDisplayName,
+                'role' => User::ROLE_ADMIN,
+                'password_hash' => password_hash($adminPassword, PASSWORD_DEFAULT),
+                'must_setup_auth' => 1,
+            ]);
             $admin = User::find($adminId);
+        } elseif (empty($admin['password_hash'])) {
+            User::setPassword((int) $admin['id'], $adminPassword);
+            $admin = User::find((int) $admin['id']);
         }
 
         Auth::login((int) $admin['id']);
@@ -148,7 +162,7 @@ final class InstallerService
             }
         }
 
-        return [$errors ? 'Installed with warnings. Review the import report.' : 'Installed successfully. Register a passkey and save your recovery codes.', $errors];
+        return [$errors ? 'Installed with warnings. Review the import report.' : 'Installed successfully. Finish MFA or passkey setup and save your recovery codes.', $errors];
     }
 
     private function writeEnv(array $config, string $adminEmail): void
@@ -172,7 +186,7 @@ final class InstallerService
 
     private function enforceUtf8mb4(\PDO $pdo): void
     {
-        $tables = ['users', 'passkeys', 'recovery_codes', 'media', 'posts', 'categories', 'category_post', 'imports'];
+        $tables = ['users', 'passkeys', 'recovery_codes', 'media', 'posts', 'categories', 'category_post', 'imports', 'preferences'];
         foreach ($tables as $table) {
             $pdo->exec(sprintf(
                 'ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',

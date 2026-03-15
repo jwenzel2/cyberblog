@@ -11,6 +11,15 @@
         <p><?= nl2br(htmlspecialchars($post['excerpt'] ?: substr(strip_tags($post['body_html']), 0, 220) . '...')) ?></p>
       </article>
     <?php endforeach; ?>
+    <div class="pagination">
+      <?php if (($pagination['page'] ?? 1) > 1): ?>
+        <a class="btn" href="/category/<?= urlencode($category['slug']) ?>?page=<?= (int) $pagination['page'] - 1 ?>">Previous</a>
+      <?php endif; ?>
+      <span class="muted">Page <?= (int) ($pagination['page'] ?? 1) ?> of <?= (int) ($pagination['total_pages'] ?? 1) ?></span>
+      <?php if (($pagination['page'] ?? 1) < ($pagination['total_pages'] ?? 1)): ?>
+        <a class="btn" href="/category/<?= urlencode($category['slug']) ?>?page=<?= (int) $pagination['page'] + 1 ?>">Next</a>
+      <?php endif; ?>
+    </div>
   </main>
   <aside class="card">
     <h3>Category Tree</h3>

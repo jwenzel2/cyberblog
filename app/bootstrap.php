@@ -27,3 +27,11 @@ foreach (['storage', 'storage/tmp', 'storage/media', 'storage/logs', 'storage/ca
         mkdir($full, 0775, true);
     }
 }
+
+if (is_file(app_path('.env')) && \App\Core\Env::get('APP_INSTALLED', '0') === '1') {
+    try {
+        \App\Services\SchemaManager::migrate();
+    } catch (\Throwable $e) {
+        // Keep bootstrap resilient during install or transient DB issues.
+    }
+}

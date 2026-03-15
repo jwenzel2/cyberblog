@@ -5,6 +5,7 @@
     <?php if ($freshCodes): ?><div class="flash">New recovery codes: <?= htmlspecialchars($freshCodes) ?></div><?php endif; ?>
     <p>Registered passkeys: <strong><?= count($passkeys) ?></strong></p>
     <p>Unused recovery codes: <strong><?= (int) $recoveryCount ?></strong></p>
+    <p>Authenticator app: <strong><?= !empty($user['totp_enabled']) ? 'Enabled' : 'Disabled' ?></strong></p>
     <table>
       <thead><tr><th>Label</th><th>Created</th><th></th></tr></thead>
       <tbody>
@@ -31,6 +32,28 @@
     <input id="passkey-label" value="Primary passkey">
     <button type="button" id="register-passkey">Register passkey</button>
     <p id="passkey-status" class="muted"></p>
+    <hr style="border-color:#1f3c64; margin:20px 0;">
+    <h2>Authenticator App</h2>
+    <?php if (empty($user['totp_enabled'])): ?>
+      <form method="post" action="/admin/security/totp/begin">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+        <button type="submit">Generate TOTP Secret</button>
+      </form>
+      <?php if ($pendingTotpSecret): ?>
+        <p class="muted">Secret: <code><?= htmlspecialchars($pendingTotpSecret) ?></code></p>
+        <p class="muted">OTPAuth URI: <code><?= htmlspecialchars((string) $totpUri) ?></code></p>
+        <form method="post" action="/admin/security/totp/verify">
+          <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+          <input name="totp_code" placeholder="123456" required>
+          <button type="submit">Verify authenticator app</button>
+        </form>
+      <?php endif; ?>
+    <?php else: ?>
+      <form method="post" action="/admin/security/totp/disable">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+        <button type="submit">Disable Authenticator App</button>
+      </form>
+    <?php endif; ?>
     <hr style="border-color:#1f3c64; margin:20px 0;">
     <form method="post" action="/admin/security/recovery/regenerate">
       <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
