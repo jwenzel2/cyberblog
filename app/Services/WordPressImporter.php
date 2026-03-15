@@ -432,7 +432,7 @@ final class WordPressImporter
             $postId = Post::save([
                 'title' => (string) $row['post_title'],
                 'slug' => $slug,
-                'excerpt' => (string) ($row['post_excerpt'] ?? ''),
+                'excerpt' => '',
                 'body_html' => $body,
                 'status' => in_array(($row['post_status'] ?? ''), ['publish', 'future'], true) ? 'published' : 'draft',
                 'published_at' => $row['post_date_gmt'] ?: null,

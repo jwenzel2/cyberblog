@@ -469,7 +469,7 @@ final class AdminController
         return [
             'title' => trim((string) $_POST['title']),
             'slug' => SlugService::unique('posts', $baseSlug, $ignoreId),
-            'excerpt' => trim((string) ($_POST['excerpt'] ?? '')),
+            'excerpt' => '',
             'body_html' => HtmlSanitizer::clean((string) ($_POST['body_html'] ?? '')),
             'status' => in_array($_POST['status'] ?? 'draft', ['draft', 'published'], true) ? $_POST['status'] : 'draft',
             'published_at' => trim((string) ($_POST['published_at'] ?? '')),

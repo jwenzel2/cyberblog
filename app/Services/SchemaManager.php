@@ -35,6 +35,7 @@ final class SchemaManager
 
         $stmt = $pdo->prepare('UPDATE posts SET author_id = :user_id WHERE author_id IS NULL');
         $stmt->execute(['user_id' => self::defaultAdminId($pdo)]);
+        $pdo->exec("UPDATE posts SET excerpt = '' WHERE excerpt IS NOT NULL AND excerpt != ''");
 
         PreferenceService::seedDefaults();
     }

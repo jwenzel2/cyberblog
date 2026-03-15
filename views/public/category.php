@@ -8,7 +8,7 @@
       <article class="card">
         <div class="muted"><?= htmlspecialchars($post['published_at'] ?: $post['created_at']) ?></div>
         <h2><a href="/post/<?= urlencode($post['slug']) ?>"><?= htmlspecialchars($post['title']) ?></a></h2>
-        <p><?= nl2br(htmlspecialchars($post['excerpt'] ?: substr(strip_tags($post['body_html']), 0, 220) . '...')) ?></p>
+        <p><?= nl2br(htmlspecialchars(substr(strip_tags($post['body_html']), 0, 220) . '...')) ?></p>
       </article>
     <?php endforeach; ?>
     <div class="pagination">

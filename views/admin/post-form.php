@@ -1,5 +1,5 @@
 <?php
-$post = $post ?? ['id' => null, 'title' => '', 'slug' => '', 'excerpt' => '', 'body_html' => '', 'status' => 'draft', 'published_at' => '', 'featured_media_id' => '', 'category_ids' => [], 'author_id' => $user['id']];
+$post = $post ?? ['id' => null, 'title' => '', 'slug' => '', 'body_html' => '', 'status' => 'draft', 'published_at' => '', 'featured_media_id' => '', 'category_ids' => [], 'author_id' => $user['id']];
 $selectedCategories = array_map('intval', $post['category_ids'] ?? []);
 $featuredId = (int) ($post['featured_media_id'] ?? 0);
 $featuredAsset = $featuredMedia ?? null;
@@ -21,8 +21,6 @@ foreach ($media as $asset) {
       <input name="title" required value="<?= htmlspecialchars($post['title']) ?>">
       <label>Slug</label>
       <input name="slug" value="<?= htmlspecialchars($post['slug']) ?>">
-      <label>Excerpt</label>
-      <textarea name="excerpt" style="min-height:120px;"><?= htmlspecialchars($post['excerpt']) ?></textarea>
       <label>Body</label>
       <div class="toolbar">
         <button type="button" data-command="formatBlock" data-value="<p>">Paragraph</button>

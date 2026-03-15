@@ -7,7 +7,7 @@
         <?php if ($post['featured_image']): ?>
           <img src="<?= htmlspecialchars($post['featured_image']) ?>" alt="" style="width:100%; border-radius:12px;">
         <?php endif; ?>
-        <p><?= nl2br(htmlspecialchars($post['excerpt'] ?: substr(strip_tags($post['body_html']), 0, 220) . '...')) ?></p>
+        <p><?= nl2br(htmlspecialchars(substr(strip_tags($post['body_html']), 0, 220) . '...')) ?></p>
       </article>
     <?php endforeach; ?>
     <div class="pagination">
