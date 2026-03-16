@@ -54,20 +54,6 @@ final class ErrorHandler
 
     private static function log(Throwable $exception): void
     {
-        $logDir = app_path('storage/logs');
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0775, true);
-        }
-
-        $entry = sprintf(
-            "[%s] %s in %s:%d\n%s\n\n",
-            now(),
-            $exception->getMessage(),
-            $exception->getFile(),
-            $exception->getLine(),
-            $exception->getTraceAsString()
-        );
-
-        @file_put_contents($logDir . '/app.log', $entry, FILE_APPEND);
+        Logger::exception($exception);
     }
 }

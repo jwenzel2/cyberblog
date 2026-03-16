@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Csrf;
+use App\Core\Logger;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
@@ -434,6 +435,14 @@ final class AdminController
                 );
                 Session::flash('status', 'Preferences saved and a test email was sent to ' . $user['email'] . '.');
             } catch (Throwable $e) {
+                Logger::error('SMTP test email failed.', [
+                    'user_id' => (int) $user['id'],
+                    'email' => (string) $user['email'],
+                    'smtp_host' => (string) ($smtpConfig['host'] ?? ''),
+                    'smtp_port' => (string) ($smtpConfig['port'] ?? ''),
+                    'smtp_encryption' => (string) ($smtpConfig['encryption'] ?? ''),
+                    'error' => $e->getMessage(),
+                ]);
                 Session::flash('error', 'Preferences saved, but the test email failed: ' . $e->getMessage());
             }
 

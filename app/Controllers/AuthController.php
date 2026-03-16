@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Logger;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
@@ -90,6 +91,10 @@ final class AuthController
         Session::put('login.email', $email);
         $user = User::findByEmail($email);
         if (!$user) {
+            Logger::warning('Passkey login requested for an unknown account.', [
+                'email' => $email,
+                'ip' => request_ip(),
+            ]);
             Response::json(['error' => 'Unknown account.'], 422);
         }
 
@@ -120,6 +125,12 @@ final class AuthController
             $user = $email !== '' ? User::findByEmail($email) : null;
             if ($user) {
                 $this->recordFailedAttempt($user);
+            } else {
+                Logger::warning('Passkey verification failed for an unknown credential.', [
+                    'credential_id' => $credentialId,
+                    'email' => $email,
+                    'ip' => request_ip(),
+                ]);
             }
             Response::json(['error' => 'Unknown passkey.'], 422);
         }
@@ -168,6 +179,10 @@ final class AuthController
 
         $user = User::findByEmail($email);
         if (!$user) {
+            Logger::warning('Recovery login attempted for an unknown account.', [
+                'email' => $email,
+                'ip' => request_ip(),
+            ]);
             Session::flash('error', 'Unknown account.');
             Response::redirect('/login');
         }
@@ -202,12 +217,25 @@ final class AuthController
     private function abortIfLocked(array $user, string $redirect): void
     {
         if (User::isAdminLocked($user)) {
+            Logger::warning('Login blocked because the account requires administrator unlock.', [
+                'user_id' => (int) $user['id'],
+                'email' => (string) $user['email'],
+                'ip' => request_ip(),
+                'redirect' => $redirect,
+            ]);
             Session::flash('error', 'This account is locked until an administrator unlocks it.');
             Session::flash('status', 'If you need help, use the support form.');
             Response::redirect($redirect);
         }
 
         if (User::isTemporarilyLocked($user)) {
+            Logger::warning('Login blocked because the account is temporarily locked.', [
+                'user_id' => (int) $user['id'],
+                'email' => (string) $user['email'],
+                'ip' => request_ip(),
+                'lock_until' => (string) ($user['lock_until'] ?? ''),
+                'redirect' => $redirect,
+            ]);
             Session::flash('error', 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.');
             Response::redirect($redirect);
         }
@@ -223,6 +251,12 @@ final class AuthController
                 default => $defaultMessage,
             });
         } else {
+            Logger::warning('Failed login attempt for an unknown account.', [
+                'email' => (string) Session::get('login.email', ''),
+                'ip' => request_ip(),
+                'redirect' => $redirect,
+                'reason' => $defaultMessage,
+            ]);
             Session::flash('error', $defaultMessage);
         }
 
@@ -232,6 +266,14 @@ final class AuthController
     private function recordFailedAttempt(array $user): array
     {
         $result = User::recordLoginFailure((int) $user['id']);
+        Logger::warning('Failed login attempt recorded.', [
+            'user_id' => (int) $user['id'],
+            'email' => (string) $user['email'],
+            'ip' => request_ip(),
+            'attempts' => (int) ($result['attempts'] ?? 0),
+            'state' => (string) ($result['state'] ?? 'failed'),
+            'lock_until' => (string) ($result['lock_until'] ?? ''),
+        ]);
         $notifier = new LoginNotificationService();
 
         if (($result['state'] ?? '') === 'temporary_lock' && (int) ($result['attempts'] ?? 0) === 4) {
