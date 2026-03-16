@@ -78,6 +78,9 @@ foreach ($adminSections as $section) {
     .media-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
     .media-card img { width:100%; aspect-ratio:1 / 1; object-fit:cover; border-radius:8px; display:block; }
     .pagination { display:flex; gap:10px; align-items:center; margin-top:18px; flex-wrap:wrap; }
+    .inline-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .page-jump { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .page-jump input { width:90px; margin:0; }
     .stack { display:flex; flex-direction:column; gap:12px; }
     .multi-select { position:relative; }
     .multi-select-panel { position:absolute; left:0; right:0; top:calc(100% + 8px); background: #091423; border:1px solid var(--line); border-radius:12px; padding:12px; max-height:280px; overflow:auto; z-index:10; display:none; }

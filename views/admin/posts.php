@@ -41,5 +41,17 @@
     <?php if (($pagination['page'] ?? 1) < ($pagination['total_pages'] ?? 1)): ?>
       <a class="btn" href="/admin/posts?page=<?= (int) $pagination['page'] + 1 ?>">Next</a>
     <?php endif; ?>
+    <form method="get" action="/admin/posts" class="page-jump">
+      <label for="posts-page-jump" class="muted">Go to page</label>
+      <input
+        id="posts-page-jump"
+        type="number"
+        name="page"
+        min="1"
+        max="<?= (int) ($pagination['total_pages'] ?? 1) ?>"
+        value="<?= (int) ($pagination['page'] ?? 1) ?>"
+      >
+      <button type="submit">Go</button>
+    </form>
   </div>
 </section>

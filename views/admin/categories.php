@@ -42,7 +42,7 @@
       <?php if (($pagination['page'] ?? 1) < ($pagination['total_pages'] ?? 1)): ?>
         <a class="btn" href="/admin/categories?page=<?= (int) $pagination['page'] + 1 ?>">Next</a>
       <?php endif; ?>
-      <form method="get" action="/admin/categories" style="display:flex; align-items:center; gap:10px;">
+      <form method="get" action="/admin/categories" class="page-jump">
         <label for="category-page-jump" class="muted">Go to page</label>
         <input
           id="category-page-jump"
@@ -51,7 +51,6 @@
           min="1"
           max="<?= (int) ($pagination['total_pages'] ?? 1) ?>"
           value="<?= (int) ($pagination['page'] ?? 1) ?>"
-          style="width:90px; margin:0;"
         >
         <button type="submit">Go</button>
       </form>
@@ -80,12 +79,14 @@
             <option value="<?= (int) $category['id'] ?>"><?= str_repeat('-- ', (int) ($category['depth'] ?? 0)) . htmlspecialchars($category['name']) ?></option>
           <?php endforeach; ?>
         </select>
-        <button type="submit" id="edit-category-submit" disabled>Edit Category</button>
       </form>
-      <form method="post" action="" id="delete-category-form">
-        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
-        <button type="submit" id="delete-category-submit" disabled>Delete Category</button>
-      </form>
+      <div class="inline-actions">
+        <button type="submit" form="edit-category-form" id="edit-category-submit" disabled>Edit Category</button>
+        <form method="post" action="" id="delete-category-form">
+          <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+          <button type="submit" id="delete-category-submit" disabled>Delete Category</button>
+        </form>
+      </div>
     </section>
 
     <section class="admin-card">

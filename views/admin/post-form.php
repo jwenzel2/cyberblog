@@ -104,6 +104,11 @@ foreach ($media as $asset) {
           <button type="button" id="media-prev">Previous</button>
           <span id="media-page-label" class="muted"></span>
           <button type="button" id="media-next">Next</button>
+          <div class="page-jump">
+            <label for="picker-page-jump" class="muted">Go to page</label>
+            <input id="picker-page-jump" type="number" min="1" value="1">
+            <button type="button" id="picker-page-go">Go</button>
+          </div>
         </div>
       </div>
       <button type="submit">Save Post</button>
@@ -151,6 +156,7 @@ let mediaPage = 1;
 let mediaTotalPages = 1;
 const mediaGrid = document.getElementById('media-grid');
 const mediaPageLabel = document.getElementById('media-page-label');
+const mediaPageJump = document.getElementById('picker-page-jump');
 const featuredInput = document.getElementById('featured_media_id');
 const featuredPreview = document.getElementById('featured-preview');
 const mediaSort = document.getElementById('media-sort');
@@ -171,6 +177,10 @@ const loadMedia = async () => {
   const payload = await response.json();
   mediaTotalPages = payload.total_pages || 1;
   mediaPageLabel.textContent = `Page ${payload.page} of ${mediaTotalPages}`;
+  if (mediaPageJump) {
+    mediaPageJump.max = String(mediaTotalPages);
+    mediaPageJump.value = String(payload.page);
+  }
   mediaGrid.innerHTML = '';
   payload.items.forEach((item) => {
     const card = document.createElement('button');
@@ -192,6 +202,11 @@ document.getElementById('media-prev')?.addEventListener('click', async () => {
 });
 document.getElementById('media-next')?.addEventListener('click', async () => {
   mediaPage = Math.min(mediaTotalPages, mediaPage + 1);
+  await loadMedia();
+});
+document.getElementById('picker-page-go')?.addEventListener('click', async () => {
+  const requestedPage = Number(mediaPageJump?.value || '1');
+  mediaPage = Math.min(mediaTotalPages, Math.max(1, requestedPage || 1));
   await loadMedia();
 });
 mediaSort?.addEventListener('change', async () => {
