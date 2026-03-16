@@ -148,9 +148,7 @@ final class AuthController
             }
 
             (new WebAuthnService())->verifyAuthentication($payload, $credential);
-            User::clearLoginFailures((int) $user['id']);
-            Auth::login((int) $credential['user_id']);
-            (new LoginNotificationService())->sendLoginNotice($user, 'passkey', request_ip(), request_user_agent());
+            $this->completeSuccessfulLogin($user, 'passkey');
             Response::json(['redirect' => '/admin']);
         } catch (RuntimeException $e) {
             $user = User::find((int) $credential['user_id']);
@@ -193,9 +191,7 @@ final class AuthController
             $this->handleFailedAttempt($user, '/login/recovery', 'Recovery code invalid or already used.');
         }
 
-        User::clearLoginFailures((int) $user['id']);
-        Auth::login((int) $user['id']);
-        (new LoginNotificationService())->sendLoginNotice($user, 'recovery code', request_ip(), request_user_agent());
+        $this->completeSuccessfulLogin($user, 'recovery code');
         Session::flash('status', 'Recovery code accepted. Update your security settings now.');
         Response::redirect('/admin/security');
     }
@@ -208,10 +204,24 @@ final class AuthController
 
     private function finalizeLogin(array $user, string $method): void
     {
+        $this->completeSuccessfulLogin($user, $method);
+        Response::redirect('/admin');
+    }
+
+    private function completeSuccessfulLogin(array $user, string $method): void
+    {
+        $ip = request_ip();
+        $userAgent = request_user_agent();
         User::clearLoginFailures((int) $user['id']);
         Auth::login((int) $user['id']);
-        (new LoginNotificationService())->sendLoginNotice($user, $method, request_ip(), request_user_agent());
-        Response::redirect('/admin');
+        Logger::info('Successful login recorded.', [
+            'user_id' => (int) $user['id'],
+            'email' => (string) $user['email'],
+            'method' => $method,
+            'ip' => $ip,
+            'user_agent' => $userAgent,
+        ]);
+        (new LoginNotificationService())->sendLoginNotice($user, $method, $ip, $userAgent);
     }
 
     private function abortIfLocked(array $user, string $redirect): void
