@@ -50,6 +50,15 @@ final class WordPressImporter
             $sqlPath = $this->findSqlDump($extractDir);
             $prefix = $this->detectPrefix($sqlPath);
             $summary = $this->persistImport($extractDir, $sqlPath, $prefix, $warnings);
+            if (($summary['posts'] + $summary['media'] + $summary['categories']) === 0) {
+                $warnings[] = 'Streaming parser imported zero items; retrying with compatibility parser.';
+                $tables = $this->parseNeededTables($sqlPath, $prefix);
+                $summary = $this->persistParsedImport($extractDir, $tables, $warnings);
+            }
+
+            if (($summary['posts'] + $summary['media'] + $summary['categories']) === 0) {
+                throw new RuntimeException('Import produced zero posts, media, and categories. The archive may not match the expected WordPress dump format.');
+            }
 
             ImportRun::update($importId, [
                 'status' => 'completed',
@@ -72,6 +81,87 @@ final class WordPressImporter
                 $this->deleteDirectory($extractDir);
             }
         }
+    }
+
+    private function parseNeededTables(string $sqlPath, string $prefix): array
+    {
+        $tables = ['posts', 'terms', 'term_taxonomy', 'term_relationships', 'postmeta'];
+        $parsed = array_fill_keys($tables, []);
+        $targetTables = array_combine(
+            array_map(static fn(string $table): string => $prefix . $table, $tables),
+            $tables
+        );
+
+        $handle = fopen($sqlPath, 'rb');
+        if (!$handle) {
+            throw new RuntimeException('Unable to open SQL dump.');
+        }
+
+        $statement = '';
+        $currentTable = null;
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                if ($currentTable === null) {
+                    if (!preg_match('/^INSERT INTO `([^`]+)`/i', $line, $matches)) {
+                        continue;
+                    }
+
+                    $fullTableName = $matches[1];
+                    if (!isset($targetTables[$fullTableName])) {
+                        continue;
+                    }
+
+                    $currentTable = $targetTables[$fullTableName];
+                    $statement = $line;
+                } else {
+                    $statement .= $line;
+                }
+
+                if (!$this->statementComplete($statement)) {
+                    continue;
+                }
+
+                $match = [];
+                if (preg_match('/^INSERT INTO `([^`]+)`(?: \(([^)]+)\))?\s+VALUES\s*(.+);$/is', trim($statement), $match)) {
+                    $columns = !empty($match[2])
+                        ? array_map(static fn(string $column): string => trim($column, " `"), explode(',', $match[2]))
+                        : $this->defaultColumnsForTable($currentTable);
+
+                    foreach ($this->splitTuples($match[3]) as $tuple) {
+                        $values = $this->parseTuple($tuple);
+                        if (count($values) !== count($columns)) {
+                            continue;
+                        }
+                        $parsed[$currentTable][] = array_combine($columns, $values);
+                    }
+                }
+
+                $statement = '';
+                $currentTable = null;
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        return $parsed;
+    }
+
+    private function defaultColumnsForTable(string $table): array
+    {
+        return match ($table) {
+            'posts' => [
+                'ID', 'post_author', 'post_date', 'post_date_gmt', 'post_content', 'post_title', 'post_excerpt',
+                'post_status', 'comment_status', 'ping_status', 'post_password', 'post_name', 'to_ping', 'pinged',
+                'post_modified', 'post_modified_gmt', 'post_content_filtered', 'post_parent', 'guid',
+                'menu_order', 'post_type', 'post_mime_type', 'comment_count',
+            ],
+            'terms' => ['term_id', 'name', 'slug', 'term_group'],
+            'term_taxonomy' => ['term_taxonomy_id', 'term_id', 'taxonomy', 'description', 'parent', 'count'],
+            'term_relationships' => ['object_id', 'term_taxonomy_id', 'term_order'],
+            'postmeta' => ['meta_id', 'post_id', 'meta_key', 'meta_value'],
+            default => throw new RuntimeException('No default column map exists for table: ' . $table),
+        };
     }
 
     private function extractArchive(string $archivePath): string
@@ -464,6 +554,130 @@ final class WordPressImporter
             Post::syncCategories($postId, $assigned);
             $postCount++;
         });
+
+        return [
+            'posts' => $postCount,
+            'media' => $mediaCount,
+            'categories' => count($categoryMapByTaxonomy),
+        ];
+    }
+
+    private function persistParsedImport(string $extractDir, array $tables, array &$warnings): array
+    {
+        $terms = [];
+        foreach ($tables['terms'] as $row) {
+            $terms[(int) $row['term_id']] = $row;
+        }
+
+        $termTaxonomy = [];
+        foreach ($tables['term_taxonomy'] as $row) {
+            $termTaxonomy[(int) $row['term_taxonomy_id']] = $row;
+        }
+
+        $relationships = [];
+        foreach ($tables['term_relationships'] as $row) {
+            $relationships[(int) $row['object_id']][] = (int) $row['term_taxonomy_id'];
+        }
+
+        $meta = [];
+        foreach ($tables['postmeta'] as $row) {
+            $meta[(int) $row['post_id']][$row['meta_key']][] = $row['meta_value'];
+        }
+
+        $categoryMapByTaxonomy = [];
+        $categoryMapByTerm = [];
+        foreach ($tables['term_taxonomy'] as $taxonomy) {
+            if (($taxonomy['taxonomy'] ?? '') !== 'category') {
+                continue;
+            }
+            $termId = (int) $taxonomy['term_id'];
+            $term = $terms[$termId] ?? null;
+            if (!$term) {
+                continue;
+            }
+            $slug = SlugService::unique('categories', SlugService::slugify((string) $term['slug']));
+            $categoryId = Category::create([
+                'name' => $term['name'],
+                'slug' => $slug,
+                'description' => $taxonomy['description'] ?? null,
+                'parent_id' => null,
+                'legacy_wp_term_id' => $termId,
+            ]);
+            $categoryMapByTaxonomy[(int) $taxonomy['term_taxonomy_id']] = $categoryId;
+            $categoryMapByTerm[$termId] = $categoryId;
+        }
+
+        foreach ($tables['term_taxonomy'] as $taxonomy) {
+            if (($taxonomy['taxonomy'] ?? '') !== 'category' || empty($taxonomy['parent'])) {
+                continue;
+            }
+            $currentId = $categoryMapByTaxonomy[(int) $taxonomy['term_taxonomy_id']] ?? null;
+            $parentId = $categoryMapByTerm[(int) $taxonomy['parent']] ?? null;
+            if ($currentId && $parentId) {
+                $stmt = Database::connection()->prepare('UPDATE categories SET parent_id = :parent_id, updated_at = :updated_at WHERE id = :id');
+                $stmt->execute(['parent_id' => $parentId, 'updated_at' => now(), 'id' => $currentId]);
+            }
+        }
+
+        $mediaStorage = new MediaStorage();
+        $attachmentMap = [];
+        $mediaCount = 0;
+        foreach ($tables['posts'] as $row) {
+            if (($row['post_type'] ?? '') !== 'attachment') {
+                continue;
+            }
+
+            $relative = $meta[(int) $row['ID']]['_wp_attached_file'][0] ?? null;
+            if (!$relative) {
+                $warnings[] = 'Attachment #' . $row['ID'] . ' missing _wp_attached_file.';
+                continue;
+            }
+
+            $source = $this->findImportedFile($extractDir, (string) $relative);
+            if (!$source) {
+                $warnings[] = 'Attachment file not found for ' . $relative;
+                continue;
+            }
+
+            $media = $mediaStorage->storeFile($source, basename((string) $relative), (string) $row['guid']);
+            if ($media) {
+                $attachmentMap[(int) $row['ID']] = $media;
+                $mediaCount++;
+            }
+        }
+
+        $postCount = 0;
+        foreach ($tables['posts'] as $row) {
+            if (($row['post_type'] ?? '') !== 'post' || Post::findByLegacyWpId((int) $row['ID'])) {
+                continue;
+            }
+
+            $slug = SlugService::unique('posts', SlugService::slugify((string) ($row['post_name'] ?: $row['post_title'])));
+            $body = HtmlSanitizer::clean((string) ($row['post_content'] ?? ''));
+            $body = $this->rewriteBodyUrls($body, $attachmentMap, (string) ($row['guid'] ?? ''));
+            $featuredMeta = $meta[(int) $row['ID']]['_thumbnail_id'][0] ?? null;
+            $featuredMediaId = $featuredMeta && isset($attachmentMap[(int) $featuredMeta]) ? $attachmentMap[(int) $featuredMeta]['id'] : null;
+
+            $postId = Post::save([
+                'title' => (string) $row['post_title'],
+                'slug' => $slug,
+                'excerpt' => '',
+                'body_html' => $body,
+                'status' => in_array(($row['post_status'] ?? ''), ['publish', 'future'], true) ? 'published' : 'draft',
+                'published_at' => $row['post_date_gmt'] ?: null,
+                'featured_media_id' => $featuredMediaId,
+                'legacy_wp_id' => (int) $row['ID'],
+            ]);
+
+            $assigned = [];
+            foreach ($relationships[(int) $row['ID']] ?? [] as $termTaxonomyId) {
+                if (isset($categoryMapByTaxonomy[$termTaxonomyId])) {
+                    $assigned[] = $categoryMapByTaxonomy[$termTaxonomyId];
+                }
+            }
+            Post::syncCategories($postId, $assigned);
+            $postCount++;
+        }
 
         return [
             'posts' => $postCount,
