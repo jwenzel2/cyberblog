@@ -25,7 +25,6 @@
         <p class="muted">Enable mail delivery for login and lockout notifications.</p>
       </div>
     </div>
-    <label><input type="checkbox" name="smtp_enabled" value="1" <?= ($preferences['smtp_enabled'] ?? '0') === '1' ? 'checked' : '' ?>> Enable SMTP notifications</label>
     <label>SMTP host</label>
     <input name="smtp_host" value="<?= htmlspecialchars($preferences['smtp_host'] ?? '') ?>">
     <label>SMTP port</label>
@@ -44,6 +43,7 @@
     <input type="email" name="smtp_from_email" value="<?= htmlspecialchars($preferences['smtp_from_email'] ?? '') ?>">
     <label>From name</label>
     <input name="smtp_from_name" value="<?= htmlspecialchars($preferences['smtp_from_name'] ?? 'CyberBlog') ?>">
+    <label><input type="checkbox" name="smtp_enabled" value="1" <?= ($preferences['smtp_enabled'] ?? '0') === '1' ? 'checked' : '' ?>>Enable SMTP notifications</label>
     <p class="muted">If SMTP stays disabled, login and lockout notifications will not be sent.</p>
     <button type="submit">Save Preferences</button>
   </form>

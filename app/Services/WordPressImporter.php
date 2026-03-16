@@ -49,8 +49,7 @@ final class WordPressImporter
             $extractDir = $this->extractArchive($archivePath);
             $sqlPath = $this->findSqlDump($extractDir);
             $prefix = $this->detectPrefix($sqlPath);
-            $tables = $this->parseNeededTables($sqlPath, $prefix);
-            $summary = $this->persistImport($extractDir, $tables, $warnings);
+            $summary = $this->persistImport($extractDir, $sqlPath, $prefix, $warnings);
 
             ImportRun::update($importId, [
                 'status' => 'completed',
@@ -68,6 +67,10 @@ final class WordPressImporter
                 'warnings' => json_encode($warnings, JSON_PRETTY_PRINT),
             ]);
             throw $e;
+        } finally {
+            if (isset($extractDir) && is_dir($extractDir)) {
+                $this->deleteDirectory($extractDir);
+            }
         }
     }
 
@@ -118,37 +121,29 @@ final class WordPressImporter
         throw new RuntimeException('Could not determine the WordPress table prefix.');
     }
 
-    private function parseNeededTables(string $sqlPath, string $prefix): array
+    private function streamTableRows(string $sqlPath, string $fullTableName, callable $callback): void
     {
-        $tables = ['posts', 'terms', 'term_taxonomy', 'term_relationships', 'postmeta'];
-        $parsed = array_fill_keys($tables, []);
-        $targetTables = array_combine(
-            array_map(static fn(string $table): string => $prefix . $table, $tables),
-            $tables
-        );
-
         $handle = fopen($sqlPath, 'rb');
         if (!$handle) {
             throw new RuntimeException('Unable to open SQL dump.');
         }
 
         $statement = '';
-        $currentTable = null;
+        $capturing = false;
 
         try {
             while (($line = fgets($handle)) !== false) {
-                if ($currentTable === null) {
+                if (!$capturing) {
                     if (!preg_match('/^INSERT INTO `([^`]+)`/i', $line, $matches)) {
                         continue;
                     }
 
-                    $fullTableName = $matches[1];
-                    if (!isset($targetTables[$fullTableName])) {
+                    if ($matches[1] !== $fullTableName) {
                         continue;
                     }
 
-                    $currentTable = $targetTables[$fullTableName];
                     $statement = $line;
+                    $capturing = true;
                 } else {
                     $statement .= $line;
                 }
@@ -161,29 +156,41 @@ final class WordPressImporter
                 if (preg_match('/^INSERT INTO `([^`]+)`(?: \(([^)]+)\))?\s+VALUES\s*(.+);$/is', trim($statement), $match)) {
                     $columns = !empty($match[2])
                         ? array_map(static fn(string $column): string => trim($column, " `"), explode(',', $match[2]))
-                        : $this->defaultColumnsForTable($currentTable);
+                        : $this->defaultColumnsForTableByFullName($fullTableName);
 
                     foreach ($this->splitTuples($match[3]) as $tuple) {
                         $values = $this->parseTuple($tuple);
                         if (count($values) !== count($columns)) {
                             continue;
                         }
-                        $parsed[$currentTable][] = array_combine($columns, $values);
+                        $callback(array_combine($columns, $values));
                     }
                 }
 
                 $statement = '';
-                $currentTable = null;
+                $capturing = false;
             }
         } finally {
             fclose($handle);
         }
-
-        return $parsed;
     }
 
-    private function defaultColumnsForTable(string $table): array
+    private function defaultColumnsForTableByFullName(string $fullTableName): array
     {
+        if (str_ends_with($fullTableName, 'posts')) {
+            $table = 'posts';
+        } elseif (str_ends_with($fullTableName, 'terms')) {
+            $table = 'terms';
+        } elseif (str_ends_with($fullTableName, 'term_taxonomy')) {
+            $table = 'term_taxonomy';
+        } elseif (str_ends_with($fullTableName, 'term_relationships')) {
+            $table = 'term_relationships';
+        } elseif (str_ends_with($fullTableName, 'postmeta')) {
+            $table = 'postmeta';
+        } else {
+            throw new RuntimeException('No default column map exists for table: ' . $fullTableName);
+        }
+
         return match ($table) {
             'posts' => [
                 'ID', 'post_author', 'post_date', 'post_date_gmt', 'post_content', 'post_title', 'post_excerpt',
@@ -333,38 +340,25 @@ final class WordPressImporter
         return $value;
     }
 
-    private function persistImport(string $extractDir, array $tables, array &$warnings): array
+    private function persistImport(string $extractDir, string $sqlPath, string $prefix, array &$warnings): array
     {
         $terms = [];
-        foreach ($tables['terms'] as $row) {
+        $this->streamTableRows($sqlPath, $prefix . 'terms', function (array $row) use (&$terms): void {
             $terms[(int) $row['term_id']] = $row;
-        }
+        });
 
         $termTaxonomy = [];
-        foreach ($tables['term_taxonomy'] as $row) {
-            $termTaxonomy[(int) $row['term_taxonomy_id']] = $row;
-        }
-
-        $relationships = [];
-        foreach ($tables['term_relationships'] as $row) {
-            $relationships[(int) $row['object_id']][] = (int) $row['term_taxonomy_id'];
-        }
-
-        $meta = [];
-        foreach ($tables['postmeta'] as $row) {
-            $meta[(int) $row['post_id']][$row['meta_key']][] = $row['meta_value'];
-        }
-
         $categoryMapByTaxonomy = [];
         $categoryMapByTerm = [];
-        foreach ($tables['term_taxonomy'] as $taxonomy) {
+        $this->streamTableRows($sqlPath, $prefix . 'term_taxonomy', function (array $taxonomy) use (&$termTaxonomy, &$categoryMapByTaxonomy, &$categoryMapByTerm, $terms): void {
+            $termTaxonomy[(int) $taxonomy['term_taxonomy_id']] = $taxonomy;
             if (($taxonomy['taxonomy'] ?? '') !== 'category') {
-                continue;
+                return;
             }
             $termId = (int) $taxonomy['term_id'];
             $term = $terms[$termId] ?? null;
             if (!$term) {
-                continue;
+                return;
             }
             $slug = SlugService::unique('categories', SlugService::slugify((string) $term['slug']));
             $categoryId = Category::create([
@@ -376,9 +370,9 @@ final class WordPressImporter
             ]);
             $categoryMapByTaxonomy[(int) $taxonomy['term_taxonomy_id']] = $categoryId;
             $categoryMapByTerm[$termId] = $categoryId;
-        }
+        });
 
-        foreach ($tables['term_taxonomy'] as $taxonomy) {
+        foreach ($termTaxonomy as $taxonomy) {
             if (($taxonomy['taxonomy'] ?? '') !== 'category' || empty($taxonomy['parent'])) {
                 continue;
             }
@@ -393,21 +387,33 @@ final class WordPressImporter
         $mediaStorage = new MediaStorage();
         $attachmentMap = [];
         $mediaCount = 0;
-        foreach ($tables['posts'] as $row) {
+        $attachedFiles = [];
+        $featuredMeta = [];
+        $this->streamTableRows($sqlPath, $prefix . 'postmeta', function (array $row) use (&$attachedFiles, &$featuredMeta): void {
+            $postId = (int) $row['post_id'];
+            $key = (string) ($row['meta_key'] ?? '');
+            if ($key === '_wp_attached_file') {
+                $attachedFiles[$postId] = $row['meta_value'];
+            } elseif ($key === '_thumbnail_id') {
+                $featuredMeta[$postId] = $row['meta_value'];
+            }
+        });
+
+        $this->streamTableRows($sqlPath, $prefix . 'posts', function (array $row) use ($extractDir, &$warnings, &$attachmentMap, &$mediaCount, $mediaStorage, $attachedFiles): void {
             if (($row['post_type'] ?? '') !== 'attachment') {
-                continue;
+                return;
             }
 
-            $relative = $meta[(int) $row['ID']]['_wp_attached_file'][0] ?? null;
+            $relative = $attachedFiles[(int) $row['ID']] ?? null;
             if (!$relative) {
                 $warnings[] = 'Attachment #' . $row['ID'] . ' missing _wp_attached_file.';
-                continue;
+                return;
             }
 
             $source = $this->findImportedFile($extractDir, (string) $relative);
             if (!$source) {
                 $warnings[] = 'Attachment file not found for ' . $relative;
-                continue;
+                return;
             }
 
             $media = $mediaStorage->storeFile($source, basename((string) $relative), (string) $row['guid']);
@@ -415,19 +421,28 @@ final class WordPressImporter
                 $attachmentMap[(int) $row['ID']] = $media;
                 $mediaCount++;
             }
-        }
+        });
+
+        $relationships = [];
+        $this->streamTableRows($sqlPath, $prefix . 'term_relationships', function (array $row) use (&$relationships, $categoryMapByTaxonomy): void {
+            $termTaxonomyId = (int) $row['term_taxonomy_id'];
+            if (!isset($categoryMapByTaxonomy[$termTaxonomyId])) {
+                return;
+            }
+            $relationships[(int) $row['object_id']][] = $termTaxonomyId;
+        });
 
         $postCount = 0;
-        foreach ($tables['posts'] as $row) {
+        $this->streamTableRows($sqlPath, $prefix . 'posts', function (array $row) use (&$postCount, $attachmentMap, $featuredMeta, $relationships, $categoryMapByTaxonomy): void {
             if (($row['post_type'] ?? '') !== 'post' || Post::findByLegacyWpId((int) $row['ID'])) {
-                continue;
+                return;
             }
 
             $slug = SlugService::unique('posts', SlugService::slugify((string) ($row['post_name'] ?: $row['post_title'])));
             $body = HtmlSanitizer::clean((string) ($row['post_content'] ?? ''));
             $body = $this->rewriteBodyUrls($body, $attachmentMap, (string) ($row['guid'] ?? ''));
-            $featuredMeta = $meta[(int) $row['ID']]['_thumbnail_id'][0] ?? null;
-            $featuredMediaId = $featuredMeta && isset($attachmentMap[(int) $featuredMeta]) ? $attachmentMap[(int) $featuredMeta]['id'] : null;
+            $featuredAttachmentId = $featuredMeta[(int) $row['ID']] ?? null;
+            $featuredMediaId = $featuredAttachmentId && isset($attachmentMap[(int) $featuredAttachmentId]) ? $attachmentMap[(int) $featuredAttachmentId]['id'] : null;
 
             $postId = Post::save([
                 'title' => (string) $row['post_title'],
@@ -448,7 +463,7 @@ final class WordPressImporter
             }
             Post::syncCategories($postId, $assigned);
             $postCount++;
-        }
+        });
 
         return [
             'posts' => $postCount,
@@ -486,5 +501,23 @@ final class WordPressImporter
 
         $html = str_replace('/wp-content/uploads/', '/media/', $html);
         return $html;
+    }
+
+    private function deleteDirectory(string $path): void
+    {
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isDir()) {
+                rmdir($item->getPathname());
+            } else {
+                unlink($item->getPathname());
+            }
+        }
+
+        rmdir($path);
     }
 }

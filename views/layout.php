@@ -61,6 +61,7 @@ foreach ($adminSections as $section) {
     .card { background: rgba(12, 23, 40, 0.92); border: 1px solid var(--line); border-radius: 18px; padding: 20px; margin-bottom: 20px; box-shadow: 0 18px 40px rgba(0,0,0,.22); }
     .muted { color: var(--muted); }
     input, textarea, select { width:100%; border-radius: 10px; border: 1px solid var(--line); background: #091423; color: var(--text); padding: 10px; margin: 6px 0 14px; font: inherit; }
+    input[type="checkbox"], input[type="radio"] { width:auto; margin: 0 8px 0 0; padding: 0; vertical-align: middle; }
     textarea { min-height: 220px; }
     .flash { padding: 12px 14px; border: 1px solid var(--accent); color: var(--accent); border-radius: 10px; margin-bottom: 20px; background: rgba(16, 44, 39, 0.35); }
     .flash.danger { border-color: var(--danger); color: var(--danger); background: rgba(64, 18, 18, 0.35); }
