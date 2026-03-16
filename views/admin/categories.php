@@ -10,12 +10,12 @@
     <div class="page-header">
       <div>
         <h2>Existing Categories</h2>
-        <p class="muted">Select a category from the 4 x 4 grid, then edit or delete it from the management panel.</p>
+        <p class="muted">Select a category from the 4 x 4 grid, move between pages, or jump to a specific page before editing or deleting it.</p>
       </div>
     </div>
     <?php if ($flash): ?><div class="flash"><?= htmlspecialchars($flash) ?></div><?php endif; ?>
     <div class="category-grid" id="category-grid">
-      <?php foreach ($flatCategories as $category): ?>
+      <?php foreach ($categories as $category): ?>
         <button
           type="button"
           class="category-card"
@@ -24,13 +24,37 @@
           data-category-slug="<?= htmlspecialchars($category['slug'], ENT_QUOTES) ?>"
           data-category-description="<?= htmlspecialchars((string) ($category['description'] ?? ''), ENT_QUOTES) ?>"
           data-category-parent-id="<?= (int) ($category['parent_id'] ?? 0) ?>"
+          data-category-parent-name="<?= htmlspecialchars((string) ($category['parent_name'] ?? ''), ENT_QUOTES) ?>"
         >
-          <span class="tag">Depth <?= (int) ($category['depth'] ?? 0) ?></span>
-          <strong><?= str_repeat('-- ', (int) ($category['depth'] ?? 0)) . htmlspecialchars($category['name']) ?></strong>
+          <span class="tag">Parent Category</span>
+          <strong><?= htmlspecialchars($category['name']) ?></strong>
           <div class="muted"><?= htmlspecialchars($category['slug']) ?></div>
+          <div class="muted" style="margin-top:10px;"><?= htmlspecialchars((string) ($category['parent_name'] ?? '')) ?></div>
           <div class="muted" style="margin-top:10px;"><?= htmlspecialchars((string) ($category['description'] ?: 'No description set.')) ?></div>
         </button>
       <?php endforeach; ?>
+    </div>
+    <div class="pagination">
+      <?php if (($pagination['page'] ?? 1) > 1): ?>
+        <a class="btn" href="/admin/categories?page=<?= (int) $pagination['page'] - 1 ?>">Previous</a>
+      <?php endif; ?>
+      <span class="muted">Page <?= (int) ($pagination['page'] ?? 1) ?> of <?= (int) ($pagination['total_pages'] ?? 1) ?></span>
+      <?php if (($pagination['page'] ?? 1) < ($pagination['total_pages'] ?? 1)): ?>
+        <a class="btn" href="/admin/categories?page=<?= (int) $pagination['page'] + 1 ?>">Next</a>
+      <?php endif; ?>
+      <form method="get" action="/admin/categories" style="display:flex; align-items:center; gap:10px;">
+        <label for="category-page-jump" class="muted">Go to page</label>
+        <input
+          id="category-page-jump"
+          type="number"
+          name="page"
+          min="1"
+          max="<?= (int) ($pagination['total_pages'] ?? 1) ?>"
+          value="<?= (int) ($pagination['page'] ?? 1) ?>"
+          style="width:90px; margin:0;"
+        >
+        <button type="submit">Go</button>
+      </form>
     </div>
   </section>
   <aside class="admin-aside-stack">

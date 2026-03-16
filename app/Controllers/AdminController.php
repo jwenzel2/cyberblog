@@ -143,9 +143,12 @@ final class AdminController
     public function categories(): void
     {
         Auth::requireAdmin();
+        $pagination = Category::paginate($this->page(), 16);
+
         View::render('admin/categories', [
             'title' => 'Categories',
-            'categories' => Category::tree(),
+            'categories' => $pagination['items'],
+            'pagination' => $pagination,
             'flatCategories' => Category::optionsWithDepth(),
             'flash' => Session::flash('status'),
         ]);
