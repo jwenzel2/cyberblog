@@ -21,9 +21,11 @@ use App\Services\HtmlSanitizer;
 use App\Services\MediaStorage;
 use App\Services\RecoveryCodeService;
 use App\Services\SlugService;
+use App\Services\SmtpClient;
 use App\Services\TotpService;
 use App\Services\WebAuthnService;
 use App\Services\WordPressImporter;
+use Throwable;
 use RuntimeException;
 
 final class AdminController
@@ -410,27 +412,73 @@ final class AdminController
         View::render('admin/preferences', [
             'title' => 'Preferences',
             'flash' => Session::flash('status'),
+            'error' => Session::flash('error'),
             'preferences' => Preference::all(),
         ]);
     }
 
     public function updatePreferences(): void
     {
-        Auth::requireAdmin();
+        $user = Auth::requireAdmin();
         $this->verifyCsrf();
-        Preference::set('articles_per_page', (string) max(1, min(100, (int) ($_POST['articles_per_page'] ?? 10))));
-        Preference::set('smtp_enabled', !empty($_POST['smtp_enabled']) ? '1' : '0');
-        Preference::set('smtp_host', trim((string) ($_POST['smtp_host'] ?? '')));
-        Preference::set('smtp_port', (string) max(1, (int) ($_POST['smtp_port'] ?? 587)));
-        Preference::set('smtp_username', trim((string) ($_POST['smtp_username'] ?? '')));
-        if (array_key_exists('smtp_password', $_POST) && trim((string) $_POST['smtp_password']) !== '') {
-            Preference::set('smtp_password', (string) $_POST['smtp_password']);
+        $smtpConfig = $this->persistPreferencesFromRequest();
+
+        if (($_POST['action'] ?? 'save') === 'send_test_mail') {
+            try {
+                (new SmtpClient())->send(
+                    $smtpConfig,
+                    (string) $user['email'],
+                    (string) ($user['display_name'] ?? $user['email']),
+                    'CyberBlog SMTP Test Email',
+                    "This is a test email from your CyberBlog SMTP settings.\n\nIf you received this message, outbound SMTP delivery is working."
+                );
+                Session::flash('status', 'Preferences saved and a test email was sent to ' . $user['email'] . '.');
+            } catch (Throwable $e) {
+                Session::flash('error', 'Preferences saved, but the test email failed: ' . $e->getMessage());
+            }
+
+            Response::redirect('/admin/preferences');
         }
-        Preference::set('smtp_encryption', in_array($_POST['smtp_encryption'] ?? 'tls', ['none', 'tls', 'ssl'], true) ? (string) $_POST['smtp_encryption'] : 'tls');
-        Preference::set('smtp_from_email', trim((string) ($_POST['smtp_from_email'] ?? '')));
-        Preference::set('smtp_from_name', trim((string) ($_POST['smtp_from_name'] ?? 'CyberBlog')));
+
         Session::flash('status', 'Preferences updated.');
         Response::redirect('/admin/preferences');
+    }
+
+    private function persistPreferencesFromRequest(): array
+    {
+        $smtpPassword = Preference::get('smtp_password', '');
+        if (array_key_exists('smtp_password', $_POST) && trim((string) $_POST['smtp_password']) !== '') {
+            $smtpPassword = (string) $_POST['smtp_password'];
+            Preference::set('smtp_password', $smtpPassword);
+        }
+
+        $articlesPerPage = (string) max(1, min(100, (int) ($_POST['articles_per_page'] ?? 10)));
+        $smtpEnabled = !empty($_POST['smtp_enabled']) ? '1' : '0';
+        $smtpHost = trim((string) ($_POST['smtp_host'] ?? ''));
+        $smtpPort = (string) max(1, (int) ($_POST['smtp_port'] ?? 587));
+        $smtpUsername = trim((string) ($_POST['smtp_username'] ?? ''));
+        $smtpEncryption = in_array($_POST['smtp_encryption'] ?? 'tls', ['none', 'tls', 'ssl'], true) ? (string) $_POST['smtp_encryption'] : 'tls';
+        $smtpFromEmail = trim((string) ($_POST['smtp_from_email'] ?? ''));
+        $smtpFromName = trim((string) ($_POST['smtp_from_name'] ?? 'CyberBlog'));
+
+        Preference::set('articles_per_page', $articlesPerPage);
+        Preference::set('smtp_enabled', $smtpEnabled);
+        Preference::set('smtp_host', $smtpHost);
+        Preference::set('smtp_port', $smtpPort);
+        Preference::set('smtp_username', $smtpUsername);
+        Preference::set('smtp_encryption', $smtpEncryption);
+        Preference::set('smtp_from_email', $smtpFromEmail);
+        Preference::set('smtp_from_name', $smtpFromName);
+
+        return [
+            'host' => $smtpHost,
+            'port' => $smtpPort,
+            'username' => $smtpUsername,
+            'password' => $smtpPassword,
+            'encryption' => $smtpEncryption,
+            'from_email' => $smtpFromEmail,
+            'from_name' => $smtpFromName,
+        ];
     }
 
     public function security(): void

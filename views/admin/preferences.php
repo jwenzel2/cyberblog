@@ -7,6 +7,7 @@
 
 <section class="admin-card" style="max-width:760px;">
   <?php if ($flash): ?><div class="flash"><?= htmlspecialchars($flash) ?></div><?php endif; ?>
+  <?php if (!empty($error)): ?><div class="flash danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
   <form method="post" action="/admin/preferences">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
     <div class="page-header">
@@ -45,6 +46,9 @@
     <input name="smtp_from_name" value="<?= htmlspecialchars($preferences['smtp_from_name'] ?? 'CyberBlog') ?>">
     <label><input type="checkbox" name="smtp_enabled" value="1" <?= ($preferences['smtp_enabled'] ?? '0') === '1' ? 'checked' : '' ?>>Enable SMTP notifications</label>
     <p class="muted">If SMTP stays disabled, login and lockout notifications will not be sent.</p>
-    <button type="submit">Save Preferences</button>
+    <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+      <button type="submit" name="action" value="save">Save Preferences</button>
+      <button type="submit" name="action" value="send_test_mail">Send Test Mail</button>
+    </div>
   </form>
 </section>
