@@ -304,8 +304,28 @@ final class AdminController
         $tmpPath = app_path('storage/tmp/' . basename((string) $_FILES['wordpress_archive']['name']));
         move_uploaded_file($_FILES['wordpress_archive']['tmp_name'], $tmpPath);
         try {
-            (new WordPressImporter())->importArchive($tmpPath);
-            Session::flash('status', 'Import completed.');
+            $summary = (new WordPressImporter())->importArchive($tmpPath);
+            if (!empty($summary['skipped'])) {
+                Session::flash(
+                    'status',
+                    sprintf(
+                        'Import skipped: archive already imported. Posts: %d, Media: %d, Categories: %d.',
+                        (int) ($summary['posts'] ?? 0),
+                        (int) ($summary['media'] ?? 0),
+                        (int) ($summary['categories'] ?? 0)
+                    )
+                );
+            } else {
+                Session::flash(
+                    'status',
+                    sprintf(
+                        'Import completed. Posts: %d, Media: %d, Categories: %d.',
+                        (int) ($summary['posts'] ?? 0),
+                        (int) ($summary['media'] ?? 0),
+                        (int) ($summary['categories'] ?? 0)
+                    )
+                );
+            }
         } catch (\Throwable $e) {
             Session::flash('status', 'Import failed: ' . $e->getMessage());
         }
