@@ -10,13 +10,25 @@ foreach ($media as $asset) {
     }
 }
 ?>
+<header class="admin-topbar">
+  <div>
+    <h1><?= $post['id'] ? 'Edit Post' : 'Create Post' ?></h1>
+    <p>Compose and publish content from the admin-only editorial surface, including category assignment and featured media selection.</p>
+  </div>
+</header>
+
 <form method="post" action="<?= $post['id'] ? '/admin/posts/' . (int) $post['id'] . '/edit' : '/admin/posts/create' ?>">
   <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
   <input type="hidden" name="id" value="<?= (int) ($post['id'] ?? 0) ?>">
   <input type="hidden" name="featured_media_id" id="featured_media_id" value="<?= $featuredId ?>">
-  <div class="split">
-    <section class="card">
-      <h1><?= $post['id'] ? 'Edit Post' : 'Create Post' ?></h1>
+  <div class="admin-form-grid">
+    <section class="admin-card">
+      <div class="page-header">
+        <div>
+          <h2>Post Content</h2>
+          <p class="muted">Use the inline editor to draft or refine the article body.</p>
+        </div>
+      </div>
       <label>Title</label>
       <input name="title" required value="<?= htmlspecialchars($post['title']) ?>">
       <label>Slug</label>
@@ -38,8 +50,13 @@ foreach ($media as $asset) {
       <textarea id="body_html" name="body_html" class="hidden"><?= htmlspecialchars($post['body_html']) ?></textarea>
     </section>
 
-    <aside class="card">
-      <h2>Post Settings</h2>
+    <aside class="admin-card">
+      <div class="page-header">
+        <div>
+          <h2>Post Settings</h2>
+          <p class="muted">Control publication, ownership, taxonomy, and featured media.</p>
+        </div>
+      </div>
       <label>Status</label>
       <select name="status">
         <option value="draft" <?= $post['status'] === 'draft' ? 'selected' : '' ?>>Draft</option>
@@ -47,10 +64,8 @@ foreach ($media as $asset) {
       </select>
       <label>Published at (UTC)</label>
       <input name="published_at" placeholder="2026-03-14 18:30:00" value="<?= htmlspecialchars((string) $post['published_at']) ?>">
-      <?php if (\App\Models\User::hasRole($user, \App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_EDITOR)): ?>
-        <label>Author ID</label>
-        <input type="number" name="author_id" min="1" value="<?= (int) ($post['author_id'] ?? $user['id']) ?>">
-      <?php endif; ?>
+      <label>Author ID</label>
+      <input type="number" name="author_id" min="1" value="<?= (int) ($post['author_id'] ?? $user['id']) ?>">
 
       <label>Categories</label>
       <div class="multi-select" id="category-select">

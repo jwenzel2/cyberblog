@@ -1,64 +1,102 @@
-<div class="grid">
-  <section class="card">
+<header class="admin-topbar">
+  <div>
     <h1>Security</h1>
+    <p>Operate your admin account with passkeys, TOTP, and recovery material so the control panel stays accessible and hardened.</p>
+  </div>
+</header>
+
+<div class="security-stat-grid">
+  <div class="security-stat"><span class="muted">Registered Passkeys</span><strong><?= count($passkeys) ?></strong></div>
+  <div class="security-stat"><span class="muted">Unused Recovery Codes</span><strong><?= (int) $recoveryCount ?></strong></div>
+  <div class="security-stat"><span class="muted">Authenticator App</span><strong><?= !empty($user['totp_enabled']) ? 'Enabled' : 'Disabled' ?></strong></div>
+</div>
+
+<div class="security-grid">
+  <section class="admin-card">
     <?php if ($flash): ?><div class="flash"><?= htmlspecialchars($flash) ?></div><?php endif; ?>
     <?php if ($freshCodes): ?><div class="flash">New recovery codes: <?= htmlspecialchars($freshCodes) ?></div><?php endif; ?>
-    <p>Registered passkeys: <strong><?= count($passkeys) ?></strong></p>
-    <p>Unused recovery codes: <strong><?= (int) $recoveryCount ?></strong></p>
-    <p>Authenticator app: <strong><?= !empty($user['totp_enabled']) ? 'Enabled' : 'Disabled' ?></strong></p>
-    <table>
-      <thead><tr><th>Label</th><th>Created</th><th></th></tr></thead>
-      <tbody>
-      <?php foreach ($passkeys as $passkey): ?>
-        <tr>
-          <td><?= htmlspecialchars($passkey['label']) ?></td>
-          <td><?= htmlspecialchars($passkey['created_at']) ?></td>
-          <td>
-            <form method="post" action="/admin/security/passkeys/delete">
-              <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
-              <input type="hidden" name="passkey_id" value="<?= (int) $passkey['id'] ?>">
-              <button type="submit">Delete</button>
-            </form>
-          </td>
-        </tr>
-      <?php endforeach; ?>
-      </tbody>
-    </table>
+    <div class="page-header">
+      <div>
+        <h2>Passkey Inventory</h2>
+        <p class="muted">Review enrolled devices attached to the administrator account.</p>
+      </div>
+    </div>
+    <div class="admin-table-wrap">
+      <table>
+        <thead><tr><th>Label</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+        <?php foreach ($passkeys as $passkey): ?>
+          <tr>
+            <td><?= htmlspecialchars($passkey['label']) ?></td>
+            <td><?= htmlspecialchars($passkey['created_at']) ?></td>
+            <td>
+              <form method="post" action="/admin/security/passkeys/delete">
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+                <input type="hidden" name="passkey_id" value="<?= (int) $passkey['id'] ?>">
+                <button type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
   </section>
-  <aside class="card">
-    <h2>Add Passkey</h2>
-    <p class="muted">Passkeys should be used from a hostname, not a raw IP address.</p>
-    <label>Device label</label>
-    <input id="passkey-label" value="Primary passkey">
-    <button type="button" id="register-passkey">Register passkey</button>
-    <p id="passkey-status" class="muted"></p>
-    <hr style="border-color:#1f3c64; margin:20px 0;">
-    <h2>Authenticator App</h2>
-    <?php if (empty($user['totp_enabled'])): ?>
-      <form method="post" action="/admin/security/totp/begin">
-        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
-        <button type="submit">Generate TOTP Secret</button>
-      </form>
-      <?php if ($pendingTotpSecret): ?>
-        <p class="muted">Secret: <code><?= htmlspecialchars($pendingTotpSecret) ?></code></p>
-        <p class="muted">OTPAuth URI: <code><?= htmlspecialchars((string) $totpUri) ?></code></p>
-        <form method="post" action="/admin/security/totp/verify">
+  <aside class="admin-aside-stack">
+    <section class="admin-card">
+      <div class="page-header">
+        <div>
+          <h2>Add Passkey</h2>
+          <p class="muted">Passkeys should be used from a hostname, not a raw IP address.</p>
+        </div>
+      </div>
+      <label>Device label</label>
+      <input id="passkey-label" value="Primary passkey">
+      <button type="button" id="register-passkey">Register Passkey</button>
+      <p id="passkey-status" class="muted"></p>
+    </section>
+
+    <section class="admin-card">
+      <div class="page-header">
+        <div>
+          <h2>Authenticator App</h2>
+          <p class="muted">Use a TOTP factor in addition to your password when passkeys are not available.</p>
+        </div>
+      </div>
+      <?php if (empty($user['totp_enabled'])): ?>
+        <form method="post" action="/admin/security/totp/begin">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
-          <input name="totp_code" placeholder="123456" required>
-          <button type="submit">Verify authenticator app</button>
+          <button type="submit">Generate TOTP Secret</button>
+        </form>
+        <?php if ($pendingTotpSecret): ?>
+          <p class="muted">Secret: <code><?= htmlspecialchars($pendingTotpSecret) ?></code></p>
+          <p class="muted">OTPAuth URI: <code><?= htmlspecialchars((string) $totpUri) ?></code></p>
+          <form method="post" action="/admin/security/totp/verify">
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+            <input name="totp_code" placeholder="123456" required>
+            <button type="submit">Verify Authenticator App</button>
+          </form>
+        <?php endif; ?>
+      <?php else: ?>
+        <form method="post" action="/admin/security/totp/disable">
+          <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+          <button type="submit">Disable Authenticator App</button>
         </form>
       <?php endif; ?>
-    <?php else: ?>
-      <form method="post" action="/admin/security/totp/disable">
+    </section>
+
+    <section class="admin-card">
+      <div class="page-header">
+        <div>
+          <h2>Recovery Codes</h2>
+          <p class="muted">Generate emergency access codes and store them offline.</p>
+        </div>
+      </div>
+      <form method="post" action="/admin/security/recovery/regenerate">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
-        <button type="submit">Disable Authenticator App</button>
+        <button type="submit">Regenerate Recovery Codes</button>
       </form>
-    <?php endif; ?>
-    <hr style="border-color:#1f3c64; margin:20px 0;">
-    <form method="post" action="/admin/security/recovery/regenerate">
-      <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
-      <button type="submit">Regenerate Recovery Codes</button>
-    </form>
+    </section>
   </aside>
 </div>
 <script>

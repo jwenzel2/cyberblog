@@ -1,14 +1,22 @@
-<div class="card" style="max-width:860px; margin:0 auto;">
-  <h1>Finish Security Setup</h1>
-  <p>Before using the admin area freely, keep a password on the account, then configure either an authenticator app or a passkey, and save recovery codes for emergencies only.</p>
-  <p class="muted">Use a real hostname for passkeys, not a raw IP address. Example: `https://cyberblog.lan` mapped to your server in local DNS or your hosts file.</p>
+<header class="admin-topbar">
+  <div>
+    <h1>Finish Security Setup</h1>
+    <p>Complete passkey or authenticator enrollment and generate recovery codes before using the administration panel freely.</p>
+  </div>
+</header>
+
+<section class="admin-card" style="max-width:920px;">
+  <p class="muted">Use a real hostname for passkeys, not a raw IP address. Example: <code>https://cyberblog.lan</code> mapped in local DNS or your hosts file.</p>
   <?php if ($freshCodes): ?><div class="flash">Recovery codes: <?= htmlspecialchars($freshCodes) ?></div><?php endif; ?>
-  <p>Registered passkeys: <strong><?= count($passkeys) ?></strong></p>
-  <p>Authenticator app: <strong><?= !empty($user['totp_enabled']) ? 'Enabled' : 'Disabled' ?></strong></p>
+  <div class="security-stat-grid">
+    <div class="security-stat"><span class="muted">Registered Passkeys</span><strong><?= count($passkeys) ?></strong></div>
+    <div class="security-stat"><span class="muted">Authenticator App</span><strong><?= !empty($user['totp_enabled']) ? 'Enabled' : 'Disabled' ?></strong></div>
+    <div class="security-stat"><span class="muted">Admin Account</span><strong><?= htmlspecialchars($user['display_name']) ?></strong></div>
+  </div>
   <label>Passkey label</label>
   <input id="bootstrap-passkey-label" value="Primary passkey">
-  <button type="button" id="bootstrap-register-passkey">Register first passkey</button>
-  <hr style="border-color:#1f3c64; margin:20px 0;">
+  <button type="button" id="bootstrap-register-passkey">Register First Passkey</button>
+  <hr>
   <form method="post" action="/admin/security/totp/begin">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
     <button type="submit">Generate TOTP Secret</button>
@@ -19,16 +27,16 @@
     <form method="post" action="/admin/security/totp/verify">
       <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
       <input name="totp_code" placeholder="123456" required>
-      <button type="submit">Verify authenticator app</button>
+      <button type="submit">Verify Authenticator App</button>
     </form>
   <?php endif; ?>
-  <hr style="border-color:#1f3c64; margin:20px 0;">
+  <hr>
   <form method="post" action="/admin/security/recovery/regenerate">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
     <button type="submit">Generate Recovery Codes</button>
   </form>
   <p id="bootstrap-status" class="muted"></p>
-</div>
+</section>
 <script>
 const decodeBase64Url = (value) => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')), c => c.charCodeAt(0));
 const encodeBase64Url = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');

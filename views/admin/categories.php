@@ -1,11 +1,29 @@
-<div class="grid">
-  <section class="card">
-    <h1>Nested Categories</h1>
+<header class="admin-topbar">
+  <div>
+    <h1>Categories</h1>
+    <p>Maintain the nested taxonomy used across the admin-controlled content model.</p>
+  </div>
+</header>
+
+<div class="admin-grid">
+  <section class="admin-card">
+    <div class="page-header">
+      <div>
+        <h2>Existing Categories</h2>
+        <p class="muted">Edit hierarchy, descriptions, and slugs without leaving the panel.</p>
+      </div>
+    </div>
     <?php if ($flash): ?><div class="flash"><?= htmlspecialchars($flash) ?></div><?php endif; ?>
     <div class="stack">
       <?php foreach ($flatCategories as $category): ?>
-        <form class="card" method="post" action="/admin/categories/<?= (int) $category['id'] ?>/edit" style="margin:0;">
+        <form class="admin-card" method="post" action="/admin/categories/<?= (int) $category['id'] ?>/edit" style="margin:0;">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+          <div class="page-header">
+            <div>
+              <h2><?= str_repeat('-- ', (int) ($category['depth'] ?? 0)) . htmlspecialchars($category['name']) ?></h2>
+              <p class="muted"><?= htmlspecialchars($category['slug']) ?></p>
+            </div>
+          </div>
           <label>Name</label>
           <input name="name" value="<?= htmlspecialchars($category['name']) ?>" required>
           <label>Slug</label>
@@ -27,8 +45,13 @@
       <?php endforeach; ?>
     </div>
   </section>
-  <aside class="card">
-    <h2>Create Category</h2>
+  <aside class="admin-card">
+    <div class="page-header">
+      <div>
+        <h2>Create Category</h2>
+        <p class="muted">Add another branch to the content taxonomy.</p>
+      </div>
+    </div>
     <form method="post" action="/admin/categories">
       <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
       <label>Name</label>

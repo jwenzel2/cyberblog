@@ -15,6 +15,7 @@ use App\Models\Media;
 use App\Models\PasskeyCredential;
 use App\Models\Post;
 use App\Models\Preference;
+use App\Models\RecoveryCode;
 use App\Models\User;
 use App\Services\HtmlSanitizer;
 use App\Services\MediaStorage;
@@ -29,20 +30,36 @@ final class AdminController
 {
     public function dashboard(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
+        $posts = Post::allForAdmin($user, 1, $this->articlesPerPage());
+        $categories = Category::optionsWithDepth();
+        $imports = ImportRun::all();
+        $users = User::all();
+        $preferences = Preference::all();
+        $passkeys = PasskeyCredential::forUser((int) $user['id']);
+        $recoveryCodes = RecoveryCode::forUser((int) $user['id']);
 
         View::render('admin/dashboard', [
             'title' => 'Dashboard',
             'user' => $user,
-            'posts' => Post::allForAdmin($user, 1, $this->articlesPerPage())['items'],
-            'categories' => Category::tree(),
-            'imports' => User::hasRole($user, User::ROLE_ADMIN) ? ImportRun::all() : [],
+            'posts' => $posts['items'],
+            'imports' => $imports,
+            'stats' => [
+                'preferences' => count($preferences),
+                'posts' => (int) ($posts['total'] ?? count($posts['items'])),
+                'categories' => count($categories),
+                'media' => count(Media::all()),
+                'users' => count($users),
+                'imports' => count($imports),
+                'passkeys' => count($passkeys),
+                'recovery_codes' => count(array_filter($recoveryCodes, static fn(array $code): bool => !$code['used_at'])),
+            ],
         ]);
     }
 
     public function posts(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $pagination = Post::allForAdmin($user, $this->page(), $this->articlesPerPage());
 
         View::render('admin/posts', [
@@ -56,7 +73,7 @@ final class AdminController
 
     public function createPost(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         View::render('admin/post-form', [
             'title' => 'Create Post',
             'post' => null,
@@ -70,7 +87,7 @@ final class AdminController
 
     public function storePost(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $this->verifyCsrf();
         $postId = Post::save($this->postPayload($user));
         Post::syncCategories($postId, $_POST['category_ids'] ?? []);
@@ -80,15 +97,11 @@ final class AdminController
 
     public function editPost(string $id): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $post = Post::find((int) $id);
         if (!$post) {
             Response::abort(404, 'Post not found.');
         }
-        if (!Post::canEdit($post, $user)) {
-            Response::abort(403, 'Forbidden');
-        }
-
         View::render('admin/post-form', [
             'title' => 'Edit Post',
             'post' => $post,
@@ -102,16 +115,12 @@ final class AdminController
 
     public function updatePost(string $id): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $this->verifyCsrf();
         $post = Post::find((int) $id);
         if (!$post) {
             Response::abort(404, 'Post not found.');
         }
-        if (!Post::canEdit($post, $user)) {
-            Response::abort(403, 'Forbidden');
-        }
-
         Post::save($this->postPayload($user, $post), (int) $id);
         Post::syncCategories((int) $id, $_POST['category_ids'] ?? []);
         Session::flash('status', 'Post updated.');
@@ -120,16 +129,12 @@ final class AdminController
 
     public function deletePost(string $id): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $this->verifyCsrf();
         $post = Post::find((int) $id);
         if (!$post) {
             Response::abort(404, 'Post not found.');
         }
-        if (!Post::canEdit($post, $user)) {
-            Response::abort(403, 'Forbidden');
-        }
-
         Post::delete((int) $id);
         Session::flash('status', 'Post deleted.');
         Response::redirect('/admin/posts');
@@ -137,7 +142,7 @@ final class AdminController
 
     public function categories(): void
     {
-        Auth::requireEditorOrAdmin();
+        Auth::requireAdmin();
         View::render('admin/categories', [
             'title' => 'Categories',
             'categories' => Category::tree(),
@@ -148,7 +153,7 @@ final class AdminController
 
     public function storeCategory(): void
     {
-        Auth::requireEditorOrAdmin();
+        Auth::requireAdmin();
         $this->verifyCsrf();
         $baseSlug = SlugService::slugify((string) (trim((string) ($_POST['slug'] ?? '')) ?: $_POST['name']));
 
@@ -169,7 +174,7 @@ final class AdminController
 
     public function updateCategory(string $id): void
     {
-        Auth::requireEditorOrAdmin();
+        Auth::requireAdmin();
         $this->verifyCsrf();
         $category = Category::find((int) $id);
         if (!$category) {
@@ -194,7 +199,7 @@ final class AdminController
 
     public function media(): void
     {
-        Auth::requireEditorOrAdmin();
+        Auth::requireAdmin();
         View::render('admin/media', [
             'title' => 'Media',
             'media' => Media::all(),
@@ -204,7 +209,7 @@ final class AdminController
 
     public function mediaPicker(): void
     {
-        Auth::requireAuthenticated();
+        Auth::requireAdmin();
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $limit = 12;
         $sort = (string) ($_GET['sort'] ?? 'newest');
@@ -220,7 +225,7 @@ final class AdminController
 
     public function uploadMedia(): void
     {
-        Auth::requireEditorOrAdmin();
+        Auth::requireAdmin();
         $this->verifyCsrf();
         $stored = (new MediaStorage())->storeUpload($_FILES['media_file'] ?? []);
         Session::flash('status', $stored ? 'Media uploaded.' : 'No file uploaded.');
@@ -229,7 +234,7 @@ final class AdminController
 
     public function uploadMediaFromPicker(): void
     {
-        Auth::requireAuthenticated();
+        Auth::requireAdmin();
         $this->verifyCsrf();
         $stored = (new MediaStorage())->storeUpload($_FILES['media_file'] ?? []);
         if (!$stored) {
@@ -372,12 +377,12 @@ final class AdminController
 
     public function security(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         View::render('admin/security', [
             'title' => 'Security',
             'user' => $user,
             'passkeys' => PasskeyCredential::forUser((int) $user['id']),
-            'recoveryCount' => count(array_filter(\App\Models\RecoveryCode::forUser((int) $user['id']), static fn(array $code): bool => !$code['used_at'])),
+            'recoveryCount' => count(array_filter(RecoveryCode::forUser((int) $user['id']), static fn(array $code): bool => !$code['used_at'])),
             'freshCodes' => Session::flash('recovery_codes'),
             'flash' => Session::flash('status'),
             'pendingTotpSecret' => Session::get('totp.pending_secret'),
@@ -387,7 +392,7 @@ final class AdminController
 
     public function securityBootstrap(): void
     {
-        $user = Auth::requireAuthenticated(true);
+        $user = Auth::requireAdmin(true);
         View::render('admin/security-bootstrap', [
             'title' => 'Security Bootstrap',
             'user' => $user,
@@ -400,13 +405,13 @@ final class AdminController
 
     public function registrationOptions(): void
     {
-        $user = Auth::requireAuthenticated(true);
+        $user = Auth::requireAdmin(true);
         Response::json((new WebAuthnService())->registrationOptions($user, PasskeyCredential::forUser((int) $user['id'])));
     }
 
     public function registerPasskey(): void
     {
-        $user = Auth::requireAuthenticated(true);
+        $user = Auth::requireAdmin(true);
         $payload = json_decode(file_get_contents('php://input') ?: '{}', true);
 
         try {
@@ -420,7 +425,7 @@ final class AdminController
 
     public function deletePasskey(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $this->verifyCsrf();
         PasskeyCredential::deleteForUser((int) ($_POST['passkey_id'] ?? 0), (int) $user['id']);
         Session::flash('status', 'Passkey removed.');
@@ -429,7 +434,7 @@ final class AdminController
 
     public function beginTotp(): void
     {
-        $user = Auth::requireAuthenticated(true);
+        $user = Auth::requireAdmin(true);
         $this->verifyCsrf();
         $service = new TotpService();
         $secret = $service->generateSecret();
@@ -441,7 +446,7 @@ final class AdminController
 
     public function verifyTotp(): void
     {
-        $user = Auth::requireAuthenticated(true);
+        $user = Auth::requireAdmin(true);
         $this->verifyCsrf();
         $secret = (string) Session::get('totp.pending_secret', '');
         if ($secret === '') {
@@ -464,7 +469,7 @@ final class AdminController
 
     public function disableTotp(): void
     {
-        $user = Auth::requireAuthenticated();
+        $user = Auth::requireAdmin();
         $this->verifyCsrf();
         User::setTotpSecret((int) $user['id'], null, false);
         User::requireAuthSetup((int) $user['id']);
@@ -476,7 +481,7 @@ final class AdminController
 
     public function regenerateRecoveryCodes(): void
     {
-        $user = Auth::requireAuthenticated(true);
+        $user = Auth::requireAdmin(true);
         $this->verifyCsrf();
         $codes = (new RecoveryCodeService())->regenerate((int) $user['id']);
         Session::flash('recovery_codes', implode(', ', $codes));
@@ -517,7 +522,7 @@ final class AdminController
         $hasPassword = !empty($user['password_hash']);
         $hasTotp = !empty($user['totp_enabled']);
         $hasPasskey = PasskeyCredential::forUser((int) $user['id']) !== [];
-        $hasRecovery = $codes !== [] || count(array_filter(\App\Models\RecoveryCode::forUser((int) $user['id']), static fn(array $code): bool => !$code['used_at'])) > 0;
+        $hasRecovery = $codes !== [] || count(array_filter(RecoveryCode::forUser((int) $user['id']), static fn(array $code): bool => !$code['used_at'])) > 0;
 
         if ($hasPassword && ($hasTotp || $hasPasskey) && $hasRecovery) {
             User::markAuthBootstrapComplete((int) $user['id']);
