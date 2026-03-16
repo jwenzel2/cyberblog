@@ -30,6 +30,24 @@
     <hr>
     <div class="page-header">
       <div>
+        <h2>Search Engine Optimization</h2>
+        <p class="muted">Control how Google and Bing verify, crawl, and summarize your public site.</p>
+      </div>
+    </div>
+    <label>Site name</label>
+    <input name="seo_site_name" value="<?= htmlspecialchars($preferences['seo_site_name'] ?? 'CyberBlog') ?>">
+    <label>Default meta description</label>
+    <textarea name="seo_default_description" style="min-height:120px;"><?= htmlspecialchars($preferences['seo_default_description'] ?? '') ?></textarea>
+    <label><input type="checkbox" name="seo_allow_indexing" value="1" <?= ($preferences['seo_allow_indexing'] ?? '1') === '1' ? 'checked' : '' ?>>Allow Google and Bing to index the public site</label>
+    <p class="muted">When disabled, the site emits <code>noindex, nofollow</code> and robots.txt disallows crawling.</p>
+    <label>Google site verification</label>
+    <input name="seo_google_site_verification" value="<?= htmlspecialchars($preferences['seo_google_site_verification'] ?? '') ?>" placeholder="Paste the token from Google Search Console">
+    <label>Bing site verification</label>
+    <input name="seo_bing_site_verification" value="<?= htmlspecialchars($preferences['seo_bing_site_verification'] ?? '') ?>" placeholder="Paste the token from Bing Webmaster Tools">
+    <p class="muted">Verification tokens are emitted as meta tags on public pages. Sitemap: <code><?= htmlspecialchars(app_url('/sitemap.xml')) ?></code></p>
+    <hr>
+    <div class="page-header">
+      <div>
         <h2>SMTP Notifications</h2>
         <p class="muted">Enable mail delivery for login and lockout notifications.</p>
       </div>

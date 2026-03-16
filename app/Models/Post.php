@@ -86,6 +86,18 @@ final class Post
         );
     }
 
+    public static function publishedForSitemap(): array
+    {
+        $stmt = Database::connection()->query(
+            "SELECT slug, updated_at, created_at, published_at
+             FROM posts
+             WHERE status = 'published' AND (published_at IS NULL OR published_at <= UTC_TIMESTAMP())
+             ORDER BY COALESCE(updated_at, published_at, created_at) DESC"
+        );
+
+        return $stmt->fetchAll();
+    }
+
     public static function save(array $data, ?int $id = null): int
     {
         if ($id) {

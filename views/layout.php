@@ -6,6 +6,15 @@ use App\Models\User;
 $viewer = Auth::user();
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $isAdminPage = str_starts_with($requestPath, '/admin');
+$seo = $seo ?? [];
+$seoTitle = (string) ($seo['title'] ?? ($title ?? 'CyberBlog'));
+$seoDescription = trim((string) ($seo['description'] ?? ''));
+$canonicalUrl = trim((string) ($seo['canonical_url'] ?? ''));
+$robotsMeta = trim((string) ($seo['robots'] ?? 'index, follow'));
+$googleVerification = trim((string) ($seo['google_site_verification'] ?? ''));
+$bingVerification = trim((string) ($seo['bing_site_verification'] ?? ''));
+$openGraphImage = trim((string) ($seo['image_url'] ?? ''));
+$openGraphType = trim((string) ($seo['type'] ?? 'website'));
 
 $adminSections = [
     ['label' => 'Preferences', 'href' => '/admin/preferences'],
@@ -30,7 +39,25 @@ foreach ($adminSections as $section) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= htmlspecialchars($title ?? 'CyberBlog') ?></title>
+  <title><?= htmlspecialchars($seoTitle) ?></title>
+  <?php if (!$isAdminPage): ?>
+    <?php if ($seoDescription !== ''): ?><meta name="description" content="<?= htmlspecialchars($seoDescription) ?>"><?php endif; ?>
+    <?php if ($canonicalUrl !== ''): ?><link rel="canonical" href="<?= htmlspecialchars($canonicalUrl) ?>"><?php endif; ?>
+    <meta name="robots" content="<?= htmlspecialchars($robotsMeta) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($seoTitle) ?>">
+    <?php if ($seoDescription !== ''): ?><meta property="og:description" content="<?= htmlspecialchars($seoDescription) ?>"><?php endif; ?>
+    <?php if ($canonicalUrl !== ''): ?><meta property="og:url" content="<?= htmlspecialchars($canonicalUrl) ?>"><?php endif; ?>
+    <meta property="og:type" content="<?= htmlspecialchars($openGraphType) ?>">
+    <meta name="twitter:card" content="<?= htmlspecialchars($openGraphImage !== '' ? 'summary_large_image' : 'summary') ?>">
+    <meta name="twitter:title" content="<?= htmlspecialchars($seoTitle) ?>">
+    <?php if ($seoDescription !== ''): ?><meta name="twitter:description" content="<?= htmlspecialchars($seoDescription) ?>"><?php endif; ?>
+    <?php if ($openGraphImage !== ''): ?>
+      <meta property="og:image" content="<?= htmlspecialchars($openGraphImage) ?>">
+      <meta name="twitter:image" content="<?= htmlspecialchars($openGraphImage) ?>">
+    <?php endif; ?>
+    <?php if ($googleVerification !== ''): ?><meta name="google-site-verification" content="<?= htmlspecialchars($googleVerification) ?>"><?php endif; ?>
+    <?php if ($bingVerification !== ''): ?><meta name="msvalidate.01" content="<?= htmlspecialchars($bingVerification) ?>"><?php endif; ?>
+  <?php endif; ?>
   <style>
     :root {
       --bg: #07111d;

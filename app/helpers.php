@@ -20,6 +20,20 @@ function app_timezone(): string
     return in_array($configured, timezone_identifiers_list(), true) ? $configured : $fallback;
 }
 
+function app_url(string $path = '/'): string
+{
+    $base = rtrim((string) \App\Core\Env::get('APP_URL', ''), '/');
+    $normalizedPath = '/' . ltrim($path, '/');
+    return $base !== '' ? $base . $normalizedPath : $normalizedPath;
+}
+
+function current_url(): string
+{
+    $path = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    $query = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_QUERY);
+    return app_url($path . ($query !== '' ? '?' . $query : ''));
+}
+
 function format_app_datetime(?string $datetime, string $format = 'Y-m-d H:i:s'): string
 {
     if ($datetime === null || trim($datetime) === '') {
@@ -34,6 +48,20 @@ function format_app_datetime(?string $datetime, string $format = 'Y-m-d H:i:s'):
     } catch (Throwable) {
         return $datetime;
     }
+}
+
+function seo_excerpt(?string $text, int $limit = 160): string
+{
+    $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $text)) ?? '');
+    if ($plain === '') {
+        return '';
+    }
+
+    if (mb_strlen($plain) <= $limit) {
+        return $plain;
+    }
+
+    return rtrim(mb_substr($plain, 0, max(0, $limit - 1))) . '…';
 }
 
 function base64url_encode(string $data): string

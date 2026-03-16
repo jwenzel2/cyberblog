@@ -20,5 +20,10 @@ final class PreferenceService
         Preference::setIfMissing('smtp_from_email', '');
         Preference::setIfMissing('smtp_from_name', 'CyberBlog');
         Preference::setIfMissing('site_timezone', date_default_timezone_get() ?: 'UTC');
+        Preference::setIfMissing('seo_site_name', 'CyberBlog');
+        Preference::setIfMissing('seo_default_description', '');
+        Preference::setIfMissing('seo_allow_indexing', '1');
+        Preference::setIfMissing('seo_google_site_verification', '');
+        Preference::setIfMissing('seo_bing_site_verification', '');
     }
 }

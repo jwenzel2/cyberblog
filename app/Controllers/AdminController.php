@@ -472,12 +472,22 @@ final class AdminController
         $smtpFromEmail = trim((string) ($_POST['smtp_from_email'] ?? ''));
         $smtpFromName = trim((string) ($_POST['smtp_from_name'] ?? 'CyberBlog'));
         $siteTimezone = (string) ($_POST['site_timezone'] ?? (date_default_timezone_get() ?: 'UTC'));
+        $seoSiteName = trim((string) ($_POST['seo_site_name'] ?? 'CyberBlog'));
+        $seoDefaultDescription = trim((string) ($_POST['seo_default_description'] ?? ''));
+        $seoAllowIndexing = !empty($_POST['seo_allow_indexing']) ? '1' : '0';
+        $seoGoogleSiteVerification = trim((string) ($_POST['seo_google_site_verification'] ?? ''));
+        $seoBingSiteVerification = trim((string) ($_POST['seo_bing_site_verification'] ?? ''));
         if (!in_array($siteTimezone, timezone_identifiers_list(), true)) {
             $siteTimezone = date_default_timezone_get() ?: 'UTC';
         }
 
         Preference::set('articles_per_page', $articlesPerPage);
         Preference::set('site_timezone', $siteTimezone);
+        Preference::set('seo_site_name', $seoSiteName !== '' ? $seoSiteName : 'CyberBlog');
+        Preference::set('seo_default_description', $seoDefaultDescription);
+        Preference::set('seo_allow_indexing', $seoAllowIndexing);
+        Preference::set('seo_google_site_verification', $seoGoogleSiteVerification);
+        Preference::set('seo_bing_site_verification', $seoBingSiteVerification);
         Preference::set('smtp_enabled', $smtpEnabled);
         Preference::set('smtp_host', $smtpHost);
         Preference::set('smtp_port', $smtpPort);

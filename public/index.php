@@ -29,6 +29,8 @@ if (!$installed && !str_contains($_SERVER['REQUEST_URI'] ?? '/', 'installer.php'
 
 $router = new Router();
 
+$router->get('/robots.txt', [PublicController::class, 'robots']);
+$router->get('/sitemap.xml', [PublicController::class, 'sitemap']);
 $router->get('/', [PublicController::class, 'home']);
 $router->get('/post/{slug}', [PublicController::class, 'post']);
 $router->get('/category/{slug}', [PublicController::class, 'category']);
