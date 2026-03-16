@@ -14,9 +14,16 @@
       </div>
     </div>
     <?php if ($flash): ?><div class="flash"><?= htmlspecialchars($flash) ?></div><?php endif; ?>
-    <div class="media-library-grid">
+    <div class="media-library-grid" id="media-library-grid">
       <?php foreach ($media as $asset): ?>
-        <article class="media-library-card">
+        <button
+          type="button"
+          class="media-library-card"
+          data-media-id="<?= (int) $asset['id'] ?>"
+          data-media-name="<?= htmlspecialchars($asset['original_name'], ENT_QUOTES) ?>"
+          data-media-mime="<?= htmlspecialchars($asset['mime_type'], ENT_QUOTES) ?>"
+          data-media-url="<?= htmlspecialchars($asset['public_url'], ENT_QUOTES) ?>"
+        >
           <div class="media-library-preview">
             <?php if (str_starts_with($asset['mime_type'], 'image/')): ?>
               <img src="<?= htmlspecialchars($asset['public_url']) ?>" alt="">
@@ -29,7 +36,7 @@
             <div class="muted"><?= htmlspecialchars($asset['mime_type']) ?></div>
             <div class="muted"><?= htmlspecialchars($asset['public_url']) ?></div>
           </div>
-        </article>
+        </button>
       <?php endforeach; ?>
     </div>
     <div class="pagination">
@@ -57,6 +64,19 @@
   <aside class="admin-card">
     <div class="page-header">
       <div>
+        <h2>Media Actions</h2>
+        <p class="muted">Select a media tile to delete it, or upload a new asset to the library.</p>
+      </div>
+    </div>
+    <div id="selected-media-details" class="stack" style="margin-bottom:18px;">
+      <div class="muted">No media selected.</div>
+    </div>
+    <form method="post" action="" id="delete-media-form" style="margin-bottom:18px;">
+      <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+      <button type="submit" id="delete-media-submit" disabled>Delete Selected Media</button>
+    </form>
+    <div class="page-header">
+      <div>
         <h2>Upload Media</h2>
         <p class="muted">Add a new asset to the library.</p>
       </div>
@@ -68,3 +88,34 @@
     </form>
   </aside>
 </div>
+
+<script>
+const mediaCards = Array.from(document.querySelectorAll('.media-library-card'));
+const deleteMediaForm = document.getElementById('delete-media-form');
+const deleteMediaSubmit = document.getElementById('delete-media-submit');
+const selectedMediaDetails = document.getElementById('selected-media-details');
+
+const selectMediaCard = (card) => {
+  mediaCards.forEach((item) => item.classList.remove('is-selected'));
+  card.classList.add('is-selected');
+
+  const mediaId = card.dataset.mediaId;
+  deleteMediaForm.action = `/admin/media/${mediaId}/delete?page=<?= (int) ($pagination['page'] ?? 1) ?>`;
+  deleteMediaSubmit.disabled = false;
+  selectedMediaDetails.innerHTML = `
+    <strong>${card.dataset.mediaName || ''}</strong>
+    <div class="muted">${card.dataset.mediaMime || ''}</div>
+    <div class="muted">${card.dataset.mediaUrl || ''}</div>
+  `;
+};
+
+mediaCards.forEach((card) => {
+  card.addEventListener('click', () => selectMediaCard(card));
+});
+
+deleteMediaForm.addEventListener('submit', (event) => {
+  if (!window.confirm('Delete the selected media item? Featured image references will be cleared automatically.')) {
+    event.preventDefault();
+  }
+});
+</script>

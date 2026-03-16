@@ -123,6 +123,7 @@ foreach ($adminSections as $section) {
     .media-thumb { max-width:110px; border-radius:12px; display:block; }
     .media-library-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
     .media-library-card { border: 1px solid rgba(143, 211, 255, 0.14); border-radius: 18px; background: rgba(19, 39, 66, 0.28); overflow: hidden; min-height: 0; }
+    .media-library-card.is-selected { border-color: rgba(88, 208, 162, 0.55); box-shadow: inset 0 0 0 1px rgba(88, 208, 162, 0.45); background: rgba(25, 59, 56, 0.34); }
     .media-library-preview { aspect-ratio: 1 / 1; display:flex; align-items:center; justify-content:center; background: rgba(7, 17, 29, 0.8); }
     .media-library-preview img { width:100%; height:100%; object-fit:cover; display:block; }
     .media-library-meta { padding: 12px; }

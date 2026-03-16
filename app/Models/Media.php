@@ -90,4 +90,10 @@ final class Media
 
         return (int) Database::connection()->lastInsertId();
     }
+
+    public static function delete(int $id): void
+    {
+        $stmt = Database::connection()->prepare('DELETE FROM media WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
 }

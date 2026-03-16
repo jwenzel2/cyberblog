@@ -58,6 +58,7 @@ $router->post('/admin/categories/{id}/edit', [AdminController::class, 'updateCat
 $router->post('/admin/categories/{id}/delete', [AdminController::class, 'deleteCategory']);
 $router->get('/admin/media', [AdminController::class, 'media']);
 $router->post('/admin/media', [AdminController::class, 'uploadMedia']);
+$router->post('/admin/media/{id}/delete', [AdminController::class, 'deleteMedia']);
 $router->get('/admin/media/picker', [AdminController::class, 'mediaPicker']);
 $router->post('/admin/media/picker/upload', [AdminController::class, 'uploadMediaFromPicker']);
 $router->get('/admin/imports', [AdminController::class, 'imports']);

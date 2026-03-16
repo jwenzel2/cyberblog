@@ -252,6 +252,24 @@ final class AdminController
         Response::redirect('/admin/media');
     }
 
+    public function deleteMedia(string $id): void
+    {
+        Auth::requireAdmin();
+        $this->verifyCsrf();
+        $media = Media::find((int) $id);
+        if (!$media) {
+            Response::abort(404, 'Media not found.');
+        }
+
+        if (!empty($media['storage_path']) && is_file((string) $media['storage_path'])) {
+            @unlink((string) $media['storage_path']);
+        }
+
+        Media::delete((int) $id);
+        Session::flash('status', 'Media deleted.');
+        Response::redirect('/admin/media?page=' . $this->page());
+    }
+
     public function uploadMediaFromPicker(): void
     {
         Auth::requireAdmin();
