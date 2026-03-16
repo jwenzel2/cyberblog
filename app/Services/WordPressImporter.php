@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Models\Category;
 use App\Models\ImportRun;
 use App\Models\Post;
+use App\Models\User;
 use RuntimeException;
 use Throwable;
 
@@ -432,6 +433,7 @@ final class WordPressImporter
 
     private function persistImport(string $extractDir, string $sqlPath, string $prefix, array &$warnings): array
     {
+        $defaultAuthorId = (int) (User::firstAdmin()['id'] ?? 0) ?: null;
         $terms = [];
         $this->streamTableRows($sqlPath, $prefix . 'terms', function (array $row) use (&$terms): void {
             $terms[(int) $row['term_id']] = $row;
@@ -523,7 +525,7 @@ final class WordPressImporter
         });
 
         $postCount = 0;
-        $this->streamTableRows($sqlPath, $prefix . 'posts', function (array $row) use (&$postCount, $attachmentMap, $featuredMeta, $relationships, $categoryMapByTaxonomy): void {
+        $this->streamTableRows($sqlPath, $prefix . 'posts', function (array $row) use (&$postCount, $attachmentMap, $featuredMeta, $relationships, $categoryMapByTaxonomy, $defaultAuthorId): void {
             if (($row['post_type'] ?? '') !== 'post' || Post::findByLegacyWpId((int) $row['ID'])) {
                 return;
             }
@@ -542,6 +544,7 @@ final class WordPressImporter
                 'status' => in_array(($row['post_status'] ?? ''), ['publish', 'future'], true) ? 'published' : 'draft',
                 'published_at' => $row['post_date_gmt'] ?: null,
                 'featured_media_id' => $featuredMediaId,
+                'author_id' => $defaultAuthorId,
                 'legacy_wp_id' => (int) $row['ID'],
             ]);
 
@@ -564,6 +567,7 @@ final class WordPressImporter
 
     private function persistParsedImport(string $extractDir, array $tables, array &$warnings): array
     {
+        $defaultAuthorId = (int) (User::firstAdmin()['id'] ?? 0) ?: null;
         $terms = [];
         foreach ($tables['terms'] as $row) {
             $terms[(int) $row['term_id']] = $row;
@@ -666,6 +670,7 @@ final class WordPressImporter
                 'status' => in_array(($row['post_status'] ?? ''), ['publish', 'future'], true) ? 'published' : 'draft',
                 'published_at' => $row['post_date_gmt'] ?: null,
                 'featured_media_id' => $featuredMediaId,
+                'author_id' => $defaultAuthorId,
                 'legacy_wp_id' => (int) $row['ID'],
             ]);
 
