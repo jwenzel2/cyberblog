@@ -117,6 +117,12 @@ foreach ($adminSections as $section) {
     .admin-actions strong { display:block; margin-bottom: 4px; }
     .admin-table-wrap { overflow-x:auto; }
     .media-thumb { max-width:110px; border-radius:12px; display:block; }
+    .media-library-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .media-library-card { border: 1px solid rgba(143, 211, 255, 0.14); border-radius: 18px; background: rgba(19, 39, 66, 0.28); overflow: hidden; min-height: 0; }
+    .media-library-preview { aspect-ratio: 1 / 1; display:flex; align-items:center; justify-content:center; background: rgba(7, 17, 29, 0.8); }
+    .media-library-preview img { width:100%; height:100%; object-fit:cover; display:block; }
+    .media-library-meta { padding: 12px; }
+    .media-library-meta strong { display:block; margin-bottom: 6px; word-break: break-word; }
     .admin-form-grid { display:grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr); gap: 22px; align-items:start; }
     .admin-aside-stack { display:flex; flex-direction:column; gap: 22px; }
     .security-grid { display:grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr); gap: 22px; align-items:start; }
@@ -139,7 +145,10 @@ foreach ($adminSections as $section) {
       .admin-topbar { flex-direction: column; }
     }
     @media (max-width: 640px) {
-      .admin-metrics, .admin-actions, .security-stat-grid, .admin-nav { grid-template-columns: 1fr; }
+      .admin-metrics, .admin-actions, .security-stat-grid, .admin-nav, .media-library-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) {
+      .media-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>

@@ -200,9 +200,12 @@ final class AdminController
     public function media(): void
     {
         Auth::requireAdmin();
+        $pagination = Media::paginate($this->page(), 16);
+
         View::render('admin/media', [
             'title' => 'Media',
-            'media' => Media::all(),
+            'media' => $pagination['items'],
+            'pagination' => $pagination,
             'flash' => Session::flash('status'),
         ]);
     }

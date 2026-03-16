@@ -13,6 +13,27 @@ final class Media
         return Database::connection()->query('SELECT * FROM media ORDER BY created_at DESC')->fetchAll();
     }
 
+    public static function paginate(int $page = 1, int $perPage = 16): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min(64, $perPage));
+        $offset = ($page - 1) * $perPage;
+
+        $total = (int) Database::connection()->query('SELECT COUNT(*) FROM media')->fetchColumn();
+        $stmt = Database::connection()->prepare('SELECT * FROM media ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
+        $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'items' => $stmt->fetchAll(),
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'total_pages' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
     public static function images(string $sort = 'newest', int $limit = 12, int $offset = 0): array
     {
         $order = match ($sort) {
