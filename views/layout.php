@@ -123,6 +123,11 @@ foreach ($adminSections as $section) {
     .media-library-preview img { width:100%; height:100%; object-fit:cover; display:block; }
     .media-library-meta { padding: 12px; }
     .media-library-meta strong { display:block; margin-bottom: 6px; word-break: break-word; }
+    .category-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .category-card { width:100%; text-align:left; border: 1px solid rgba(143, 211, 255, 0.14); border-radius: 18px; background: rgba(19, 39, 66, 0.28); padding: 16px; min-height: 180px; }
+    .category-card.is-selected { border-color: rgba(88, 208, 162, 0.55); box-shadow: inset 0 0 0 1px rgba(88, 208, 162, 0.45); background: rgba(25, 59, 56, 0.34); }
+    .category-card strong { display:block; margin-bottom: 8px; word-break: break-word; }
+    .category-card .tag { margin-bottom: 10px; }
     .admin-form-grid { display:grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr); gap: 22px; align-items:start; }
     .admin-aside-stack { display:flex; flex-direction:column; gap: 22px; }
     .security-grid { display:grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr); gap: 22px; align-items:start; }
@@ -145,10 +150,11 @@ foreach ($adminSections as $section) {
       .admin-topbar { flex-direction: column; }
     }
     @media (max-width: 640px) {
-      .admin-metrics, .admin-actions, .security-stat-grid, .admin-nav, .media-library-grid { grid-template-columns: 1fr; }
+      .admin-metrics, .admin-actions, .security-stat-grid, .admin-nav, .media-library-grid, .category-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 900px) {
       .media-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>

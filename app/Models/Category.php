@@ -86,6 +86,12 @@ final class Category
         ]);
     }
 
+    public static function delete(int $id): void
+    {
+        $stmt = Database::connection()->prepare('DELETE FROM categories WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
+
     public static function optionsWithDepth(): array
     {
         $options = [];

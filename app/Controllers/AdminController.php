@@ -197,6 +197,20 @@ final class AdminController
         Response::redirect('/admin/categories');
     }
 
+    public function deleteCategory(string $id): void
+    {
+        Auth::requireAdmin();
+        $this->verifyCsrf();
+        $category = Category::find((int) $id);
+        if (!$category) {
+            Response::abort(404, 'Category not found.');
+        }
+
+        Category::delete((int) $id);
+        Session::flash('status', 'Category deleted.');
+        Response::redirect('/admin/categories');
+    }
+
     public function media(): void
     {
         Auth::requireAdmin();

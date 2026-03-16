@@ -55,6 +55,7 @@ $router->post('/admin/posts/{id}/delete', [AdminController::class, 'deletePost']
 $router->get('/admin/categories', [AdminController::class, 'categories']);
 $router->post('/admin/categories', [AdminController::class, 'storeCategory']);
 $router->post('/admin/categories/{id}/edit', [AdminController::class, 'updateCategory']);
+$router->post('/admin/categories/{id}/delete', [AdminController::class, 'deleteCategory']);
 $router->get('/admin/media', [AdminController::class, 'media']);
 $router->post('/admin/media', [AdminController::class, 'uploadMedia']);
 $router->get('/admin/media/picker', [AdminController::class, 'mediaPicker']);
