@@ -29,7 +29,7 @@
               <div class="muted">Password: <?= !empty($user['password_hash']) ? 'set' : 'missing' ?></div>
               <div class="muted">TOTP: <?= !empty($user['totp_enabled']) ? 'enabled' : 'disabled' ?></div>
               <div class="muted">Failed attempts: <?= (int) ($user['failed_login_attempts'] ?? 0) ?></div>
-              <div class="muted">Temporary lock: <?= !empty($user['lock_until']) ? htmlspecialchars((string) $user['lock_until']) . ' UTC' : 'none' ?></div>
+              <div class="muted">Temporary lock: <?= !empty($user['lock_until']) ? htmlspecialchars(format_app_datetime((string) $user['lock_until'])) . ' ' . htmlspecialchars($timezone) : 'none' ?></div>
               <div class="muted">Admin unlock required: <?= !empty($user['admin_unlock_required']) ? 'yes' : 'no' ?></div>
             </td>
             <td>

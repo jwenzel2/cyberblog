@@ -19,6 +19,14 @@
     <label>Articles per page</label>
     <input type="number" min="1" max="100" name="articles_per_page" value="<?= htmlspecialchars($preferences['articles_per_page'] ?? '10') ?>" required>
     <p class="muted">Applies to public listings and the admin posts table.</p>
+    <label>Site timezone</label>
+    <select name="site_timezone">
+      <?php $selectedTimezone = $preferences['site_timezone'] ?? (date_default_timezone_get() ?: 'UTC'); ?>
+      <?php foreach ($timezones as $timezone): ?>
+        <option value="<?= htmlspecialchars($timezone) ?>" <?= $selectedTimezone === $timezone ? 'selected' : '' ?>><?= htmlspecialchars($timezone) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <p class="muted">Used when displaying lockout times and notification timestamps throughout the site.</p>
     <hr>
     <div class="page-header">
       <div>

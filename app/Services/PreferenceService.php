@@ -19,5 +19,6 @@ final class PreferenceService
         Preference::setIfMissing('smtp_encryption', 'tls');
         Preference::setIfMissing('smtp_from_email', '');
         Preference::setIfMissing('smtp_from_name', 'CyberBlog');
+        Preference::setIfMissing('site_timezone', date_default_timezone_get() ?: 'UTC');
     }
 }

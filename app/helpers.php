@@ -13,6 +13,29 @@ function now(): string
     return gmdate('Y-m-d H:i:s');
 }
 
+function app_timezone(): string
+{
+    $fallback = date_default_timezone_get() ?: 'UTC';
+    $configured = \App\Models\Preference::get('site_timezone', $fallback) ?: $fallback;
+    return in_array($configured, timezone_identifiers_list(), true) ? $configured : $fallback;
+}
+
+function format_app_datetime(?string $datetime, string $format = 'Y-m-d H:i:s'): string
+{
+    if ($datetime === null || trim($datetime) === '') {
+        return '';
+    }
+
+    try {
+        $utc = new DateTimeZone('UTC');
+        $timezone = new DateTimeZone(app_timezone());
+        $value = new DateTimeImmutable($datetime, $utc);
+        return $value->setTimezone($timezone)->format($format);
+    } catch (Throwable) {
+        return $datetime;
+    }
+}
+
 function base64url_encode(string $data): string
 {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');

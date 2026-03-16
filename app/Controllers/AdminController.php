@@ -342,6 +342,7 @@ final class AdminController
             'title' => 'Users',
             'users' => User::all(),
             'flash' => Session::flash('status'),
+            'timezone' => app_timezone(),
         ]);
     }
 
@@ -415,6 +416,7 @@ final class AdminController
             'flash' => Session::flash('status'),
             'error' => Session::flash('error'),
             'preferences' => Preference::all(),
+            'timezones' => timezone_identifiers_list(),
         ]);
     }
 
@@ -469,8 +471,13 @@ final class AdminController
         $smtpEncryption = in_array($_POST['smtp_encryption'] ?? 'tls', ['none', 'tls', 'ssl'], true) ? (string) $_POST['smtp_encryption'] : 'tls';
         $smtpFromEmail = trim((string) ($_POST['smtp_from_email'] ?? ''));
         $smtpFromName = trim((string) ($_POST['smtp_from_name'] ?? 'CyberBlog'));
+        $siteTimezone = (string) ($_POST['site_timezone'] ?? (date_default_timezone_get() ?: 'UTC'));
+        if (!in_array($siteTimezone, timezone_identifiers_list(), true)) {
+            $siteTimezone = date_default_timezone_get() ?: 'UTC';
+        }
 
         Preference::set('articles_per_page', $articlesPerPage);
+        Preference::set('site_timezone', $siteTimezone);
         Preference::set('smtp_enabled', $smtpEnabled);
         Preference::set('smtp_host', $smtpHost);
         Preference::set('smtp_port', $smtpPort);

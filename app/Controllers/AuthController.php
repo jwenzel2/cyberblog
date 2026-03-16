@@ -102,7 +102,7 @@ final class AuthController
             Response::json(['error' => 'This account is locked until an administrator unlocks it.'], 423);
         }
         if (User::isTemporarilyLocked($user)) {
-            Response::json(['error' => 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.'], 423);
+            Response::json(['error' => 'This account is temporarily locked until ' . format_app_datetime((string) $user['lock_until']) . ' ' . app_timezone() . '.'], 423);
         }
 
         $credentials = PasskeyCredential::forUser((int) $user['id']);
@@ -144,7 +144,7 @@ final class AuthController
                 Response::json(['error' => 'This account is locked until an administrator unlocks it.'], 423);
             }
             if (User::isTemporarilyLocked($user)) {
-                Response::json(['error' => 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.'], 423);
+                Response::json(['error' => 'This account is temporarily locked until ' . format_app_datetime((string) $user['lock_until']) . ' ' . app_timezone() . '.'], 423);
             }
 
             (new WebAuthnService())->verifyAuthentication($payload, $credential);
@@ -236,7 +236,7 @@ final class AuthController
                 'lock_until' => (string) ($user['lock_until'] ?? ''),
                 'redirect' => $redirect,
             ]);
-            Session::flash('error', 'This account is temporarily locked until ' . $user['lock_until'] . ' UTC.');
+            Session::flash('error', 'This account is temporarily locked until ' . format_app_datetime((string) $user['lock_until']) . ' ' . app_timezone() . '.');
             Response::redirect($redirect);
         }
     }
@@ -246,7 +246,7 @@ final class AuthController
         if ($user) {
             $result = $this->recordFailedAttempt($user);
             Session::flash('error', match ($result['state']) {
-                'temporary_lock' => 'Too many failed attempts. This account is locked until ' . ($result['lock_until'] ?? '') . ' UTC.',
+                'temporary_lock' => 'Too many failed attempts. This account is locked until ' . format_app_datetime((string) ($result['lock_until'] ?? '')) . ' ' . app_timezone() . '.',
                 'admin_locked' => 'This account is locked until an administrator unlocks it.',
                 default => $defaultMessage,
             });

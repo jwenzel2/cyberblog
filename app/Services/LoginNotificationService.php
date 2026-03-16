@@ -11,10 +11,11 @@ final class LoginNotificationService
 {
     public function sendLoginNotice(array $user, string $method, string $ip, string $userAgent): void
     {
+        $timezone = app_timezone();
         $body = implode("\n", [
             'A login to your CyberBlog account was detected.',
             '',
-            'Time (UTC): ' . gmdate('Y-m-d H:i:s'),
+            'Time (' . $timezone . '): ' . format_app_datetime(now()),
             'IP address: ' . $ip,
             'Browser: ' . $userAgent,
             'Method: ' . $method,
@@ -28,10 +29,11 @@ final class LoginNotificationService
     public function sendTemporaryLockNotice(array $user, string $lockUntil): void
     {
         $contactUrl = rtrim((string) Env::get('APP_URL', ''), '/') . '/support/contact?email=' . urlencode((string) $user['email']);
+        $timezone = app_timezone();
         $body = implode("\n", [
             'Your CyberBlog account has been temporarily locked after repeated failed login attempts.',
             '',
-            'Locked until (UTC): ' . $lockUntil,
+            'Locked until (' . $timezone . '): ' . format_app_datetime($lockUntil),
             'Account: ' . $user['email'],
             '',
             'If this was not you, review your credentials and try again after the lockout period.',
@@ -44,10 +46,11 @@ final class LoginNotificationService
     public function sendAdminLockNotice(array $user): void
     {
         $contactUrl = rtrim((string) Env::get('APP_URL', ''), '/') . '/support/contact?email=' . urlencode((string) $user['email']);
+        $timezone = app_timezone();
         $body = implode("\n", [
             'Your CyberBlog account has been locked and now requires administrator intervention.',
             '',
-            'Time (UTC): ' . gmdate('Y-m-d H:i:s'),
+            'Time (' . $timezone . '): ' . format_app_datetime(now()),
             'Account: ' . $user['email'],
             '',
             'Use the support form to contact an administrator:',
@@ -60,12 +63,13 @@ final class LoginNotificationService
     public function sendSupportRequest(string $fromEmail, string $message): void
     {
         $emailService = new EmailService();
+        $timezone = app_timezone();
         foreach (User::admins() as $admin) {
             $body = implode("\n", [
                 'A locked-out user submitted a support request.',
                 '',
                 'User email: ' . $fromEmail,
-                'Time (UTC): ' . gmdate('Y-m-d H:i:s'),
+                'Time (' . $timezone . '): ' . format_app_datetime(now()),
                 '',
                 'Message:',
                 $message,
