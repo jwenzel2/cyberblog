@@ -5,7 +5,9 @@
         <div class="muted"><?= htmlspecialchars($post['published_at'] ?: $post['created_at']) ?></div>
         <h2><a href="/post/<?= urlencode($post['slug']) ?>"><?= htmlspecialchars($post['title']) ?></a></h2>
         <?php if ($post['featured_image']): ?>
-          <img src="<?= htmlspecialchars($post['featured_image']) ?>" alt="" style="width:100%; border-radius:12px;">
+          <a href="/post/<?= urlencode($post['slug']) ?>">
+            <img src="<?= htmlspecialchars($post['featured_image']) ?>" alt="" style="width:100%; border-radius:12px;">
+          </a>
         <?php endif; ?>
         <p><?= nl2br(htmlspecialchars(substr(strip_tags($post['body_html']), 0, 220) . '...')) ?></p>
       </article>
