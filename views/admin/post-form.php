@@ -2,6 +2,7 @@
 $post = $post ?? ['id' => null, 'title' => '', 'slug' => '', 'body_html' => '', 'status' => 'draft', 'published_at' => '', 'featured_media_id' => '', 'category_ids' => [], 'author_id' => $user['id']];
 $selectedCategories = array_map('intval', $post['category_ids'] ?? []);
 $featuredId = (int) ($post['featured_media_id'] ?? 0);
+$selectedAuthorId = (int) ($post['author_id'] ?? $user['id']);
 $featuredAsset = $featuredMedia ?? null;
 foreach ($media as $asset) {
     if ((int) $asset['id'] === $featuredId) {
@@ -64,8 +65,17 @@ foreach ($media as $asset) {
       </select>
       <label>Published at (UTC)</label>
       <input name="published_at" placeholder="2026-03-14 18:30:00" value="<?= htmlspecialchars((string) $post['published_at']) ?>">
-      <label>Author ID</label>
-      <input type="number" name="author_id" min="1" value="<?= (int) ($post['author_id'] ?? $user['id']) ?>">
+      <label>Author</label>
+      <select name="author_id" <?= \App\Models\User::hasRole($user, \App\Models\User::ROLE_AUTHOR) ? 'disabled' : '' ?>>
+        <?php foreach (($users ?? []) as $author): ?>
+          <option value="<?= (int) $author['id'] ?>" <?= $selectedAuthorId === (int) $author['id'] ? 'selected' : '' ?>>
+            <?= htmlspecialchars((string) ($author['display_name'] ?: $author['email'])) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+      <?php if (\App\Models\User::hasRole($user, \App\Models\User::ROLE_AUTHOR)): ?>
+        <input type="hidden" name="author_id" value="<?= (int) $user['id'] ?>">
+      <?php endif; ?>
 
       <label>Categories</label>
       <div class="multi-select" id="category-select">

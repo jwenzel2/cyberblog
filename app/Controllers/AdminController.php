@@ -84,6 +84,7 @@ final class AdminController
             'categoryOptions' => Category::optionsWithDepth(),
             'media' => Media::images(),
             'featuredMedia' => null,
+            'users' => User::all(),
             'user' => $user,
         ]);
     }
@@ -112,6 +113,7 @@ final class AdminController
             'categoryOptions' => Category::optionsWithDepth(),
             'media' => Media::images(),
             'featuredMedia' => !empty($post['featured_media_id']) ? Media::find((int) $post['featured_media_id']) : null,
+            'users' => User::all(),
             'user' => $user,
         ]);
     }
