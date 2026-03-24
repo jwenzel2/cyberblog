@@ -3,22 +3,18 @@
   <p class="muted">Use password + MFA or a registered passkey. Recovery codes are reserved for emergency access.</p>
   <?php if ($status): ?><div class="flash"><?= htmlspecialchars($status) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="flash danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-  <div class="two-col">
-    <form method="post" action="/login/password">
-      <label>Email</label>
-      <input id="login-email" type="email" name="email" value="<?= htmlspecialchars($oldEmail) ?>" required>
-      <label>Password</label>
-      <input type="password" name="password" autocomplete="current-password" required>
-      <button type="submit">Continue with password</button>
-    </form>
-    <div>
-      <label>Email for passkey</label>
-      <input id="passkey-email" type="email" value="<?= htmlspecialchars($oldEmail) ?>" required>
-      <p class="muted">Passkey login should be used from a hostname rather than a raw IP address.</p>
-      <button id="passkey-login" type="button">Use passkey</button>
-      <p id="passkey-message" class="muted"></p>
+  <form method="post" action="/login/password">
+    <label>Email</label>
+    <input id="login-email" type="email" name="email" value="<?= htmlspecialchars($oldEmail) ?>" required>
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="current-password" required>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+      <button type="submit">Login With Password</button>
+      <button id="passkey-login" type="button">Login with passkey</button>
     </div>
-  </div>
+    <p class="muted" style="margin-top:14px;">Passkey login uses the email above and ignores the password field. Use a hostname rather than a raw IP address.</p>
+    <p id="passkey-message" class="muted"></p>
+  </form>
   <p><a href="/login/recovery">Can't log in?</a></p>
   <p class="muted">Need administrator help? <a href="/support/contact?email=<?= urlencode($oldEmail) ?>">Contact an admin</a>.</p>
 </div>
@@ -28,7 +24,7 @@ const encodeBase64Url = (buffer) => btoa(String.fromCharCode(...new Uint8Array(b
 
 document.getElementById('passkey-login')?.addEventListener('click', async () => {
   const message = document.getElementById('passkey-message');
-  const email = document.getElementById('passkey-email')?.value || '';
+  const email = document.getElementById('login-email')?.value || '';
   try {
     if (!window.isSecureContext) {
       throw new Error('Passkeys require a secure context (HTTPS or localhost).');
