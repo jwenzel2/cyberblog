@@ -6,9 +6,19 @@ namespace App\Core;
 
 final class Session
 {
+    private const COOKIE_LIFETIME = 604800;
+
     public static function start(): void
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
+            ini_set('session.gc_maxlifetime', (string) self::COOKIE_LIFETIME);
+            session_set_cookie_params([
+                'lifetime' => self::COOKIE_LIFETIME,
+                'path' => '/',
+                'httponly' => true,
+                'samesite' => 'Lax',
+                'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            ]);
             session_start();
         }
     }
@@ -49,6 +59,8 @@ final class Session
     {
         $_SESSION = [];
         if (session_status() === PHP_SESSION_ACTIVE) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 3600, $params['path'] ?? '/', $params['domain'] ?? '', (bool) ($params['secure'] ?? false), (bool) ($params['httponly'] ?? true));
             session_destroy();
         }
     }
@@ -58,5 +70,10 @@ final class Session
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
         }
+    }
+
+    public static function id(): string
+    {
+        return session_status() === PHP_SESSION_ACTIVE ? session_id() : '';
     }
 }

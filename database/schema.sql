@@ -104,3 +104,31 @@ CREATE TABLE IF NOT EXISTS preferences (
   `value` TEXT NULL,
   updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS analytics_site_daily (
+  metric_date DATE PRIMARY KEY,
+  visit_count INT UNSIGNED NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS analytics_post_daily (
+  post_id INT UNSIGNED NOT NULL,
+  metric_date DATE NOT NULL,
+  view_count INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (post_id, metric_date),
+  CONSTRAINT fk_analytics_post_daily_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS login_sessions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  session_id VARCHAR(190) NOT NULL,
+  revocation_token VARCHAR(64) NOT NULL UNIQUE,
+  ip_address VARCHAR(64) NOT NULL,
+  user_agent VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL,
+  expires_at DATETIME NOT NULL,
+  revoked_at DATETIME NULL,
+  INDEX idx_login_sessions_user (user_id),
+  INDEX idx_login_sessions_session (session_id),
+  CONSTRAINT fk_login_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -9,6 +9,7 @@ use App\Core\Logger;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
+use App\Models\LoginSession;
 use App\Models\PasskeyCredential;
 use App\Models\RecoveryCode;
 use App\Models\User;
@@ -202,6 +203,25 @@ final class AuthController
         Response::redirect('/login');
     }
 
+    public function revokeSession(string $token): void
+    {
+        $loginSession = LoginSession::findByToken($token);
+        if (!$loginSession) {
+            Session::flash('error', 'That login session could not be found.');
+            Response::redirect('/login');
+        }
+
+        LoginSession::revoke((int) $loginSession['id']);
+
+        if (Session::id() !== '' && Session::id() === (string) $loginSession['session_id']) {
+            Auth::logout();
+            Session::start();
+        }
+
+        Session::flash('status', 'That login session has been invalidated. If this was not you, change your password and review your security settings.');
+        Response::redirect('/login');
+    }
+
     private function finalizeLogin(array $user, string $method): void
     {
         $this->completeSuccessfulLogin($user, $method);
@@ -213,15 +233,16 @@ final class AuthController
         $ip = request_ip();
         $userAgent = request_user_agent();
         User::clearLoginFailures((int) $user['id']);
-        Auth::login((int) $user['id']);
+        $loginSession = Auth::login((int) $user['id'], $ip, $userAgent);
         Logger::info('Successful login recorded.', [
             'user_id' => (int) $user['id'],
             'email' => (string) $user['email'],
             'method' => $method,
             'ip' => $ip,
             'user_agent' => $userAgent,
+            'login_session_id' => (int) $loginSession['id'],
         ]);
-        (new LoginNotificationService())->sendLoginNotice($user, $method, $ip, $userAgent);
+        (new LoginNotificationService())->sendLoginNotice($user, $method, $ip, $userAgent, (string) $loginSession['revocation_token']);
     }
 
     private function abortIfLocked(array $user, string $redirect): void

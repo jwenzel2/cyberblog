@@ -45,9 +45,11 @@ $router->post('/login/passkey/options', [AuthController::class, 'passkeyOptions'
 $router->post('/login/passkey/verify', [AuthController::class, 'passkeyVerify']);
 $router->get('/login/recovery', [AuthController::class, 'showRecovery']);
 $router->post('/login/recovery', [AuthController::class, 'recoveryVerify']);
+$router->get('/login/session/revoke/{token}', [AuthController::class, 'revokeSession']);
 $router->post('/logout', [AuthController::class, 'logout']);
 
 $router->get('/admin', [AdminController::class, 'dashboard']);
+$router->get('/admin/analytics', [AdminController::class, 'analytics']);
 $router->get('/admin/posts', [AdminController::class, 'posts']);
 $router->get('/admin/posts/create', [AdminController::class, 'createPost']);
 $router->post('/admin/posts/create', [AdminController::class, 'storePost']);

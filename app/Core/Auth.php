@@ -4,14 +4,26 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Models\LoginSession;
 use App\Models\User;
 
 final class Auth
 {
     public static function user(): ?array
     {
-        $id = Session::get('user_id');
-        return $id ? User::find((int) $id) : null;
+        $id = (int) Session::get('user_id', 0);
+        $loginSessionId = (int) Session::get('login_session_id', 0);
+        $sessionId = Session::id();
+        if ($id <= 0 || $loginSessionId <= 0 || $sessionId === '') {
+            return null;
+        }
+
+        if (!LoginSession::findActive($loginSessionId, $id, $sessionId)) {
+            self::logout();
+            return null;
+        }
+
+        return User::find($id);
     }
 
     public static function check(): bool
@@ -19,15 +31,22 @@ final class Auth
         return self::user() !== null;
     }
 
-    public static function login(int $userId): void
+    public static function login(int $userId, string $ip, string $userAgent): array
     {
         Session::regenerate();
         Session::put('user_id', $userId);
         Session::forget('pending_login_user_id');
+        $loginSession = LoginSession::create($userId, Session::id(), $ip, $userAgent);
+        Session::put('login_session_id', $loginSession['id']);
+        return $loginSession;
     }
 
     public static function logout(): void
     {
+        $loginSessionId = (int) Session::get('login_session_id', 0);
+        if ($loginSessionId > 0) {
+            LoginSession::revoke($loginSessionId);
+        }
         Session::destroy();
     }
 

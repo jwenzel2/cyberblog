@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\View;
+use App\Models\Analytics;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Preference;
@@ -13,6 +14,7 @@ final class PublicController
 {
     public function home(): void
     {
+        Analytics::recordSiteVisit();
         $pagination = Post::recentPublished($this->page(), $this->perPage());
         View::render('public/home', [
             'title' => $this->pageTitle('Home'),
@@ -33,6 +35,8 @@ final class PublicController
         if (!$post) {
             \App\Core\Response::abort(404, 'Post not found');
         }
+        Analytics::recordSiteVisit();
+        Analytics::recordPostView((int) $post['id']);
 
         View::render('public/post', [
             'title' => $this->pageTitle((string) $post['title']),
@@ -56,6 +60,7 @@ final class PublicController
         if (!$category) {
             \App\Core\Response::abort(404, 'Category not found');
         }
+        Analytics::recordSiteVisit();
 
         $pagination = Post::forCategory((int) $category['id'], $this->page(), $this->perPage());
 

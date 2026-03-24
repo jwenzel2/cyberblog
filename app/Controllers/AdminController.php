@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Category;
+use App\Models\Analytics;
 use App\Models\ImportRun;
 use App\Models\Media;
 use App\Models\PasskeyCredential;
@@ -56,7 +57,23 @@ final class AdminController
                 'imports' => count($imports),
                 'passkeys' => count($passkeys),
                 'recovery_codes' => count(array_filter($recoveryCodes, static fn(array $code): bool => !$code['used_at'])),
+                'site_visits_today' => Analytics::siteVisitSummary()['today'],
+                'post_views_today' => Analytics::postViewSummary()['today'],
             ],
+        ]);
+    }
+
+    public function analytics(): void
+    {
+        Auth::requireAdmin();
+        View::render('admin/analytics', [
+            'title' => 'Analytics',
+            'siteVisits' => Analytics::siteVisitSummary(),
+            'postViews' => Analytics::postViewSummary(),
+            'topPostsToday' => Analytics::topPosts(1),
+            'topPostsWeek' => Analytics::topPosts(7),
+            'topPostsMonth' => Analytics::topPosts(30),
+            'recentSiteVisits' => Analytics::recentSiteVisits(),
         ]);
     }
 

@@ -8,6 +8,7 @@ use App\Core\Csrf;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
+use App\Models\Analytics;
 use App\Services\EmailService;
 use App\Services\LoginNotificationService;
 
@@ -15,6 +16,7 @@ final class SupportController
 {
     public function showContact(): void
     {
+        Analytics::recordSiteVisit();
         View::render('public/support-contact', [
             'title' => 'Contact Admin',
             'flash' => Session::flash('status'),

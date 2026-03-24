@@ -17,6 +17,7 @@ $openGraphImage = trim((string) ($seo['image_url'] ?? ''));
 $openGraphType = trim((string) ($seo['type'] ?? 'website'));
 
 $adminSections = [
+    ['label' => 'Analytics', 'href' => '/admin/analytics'],
     ['label' => 'Preferences', 'href' => '/admin/preferences'],
     ['label' => 'Sharing', 'href' => '/admin/sharing'],
     ['label' => 'Posts', 'href' => '/admin/posts'],
@@ -149,10 +150,15 @@ foreach ($adminSections as $section) {
     .admin-metrics { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
     .metric { background: linear-gradient(180deg, rgba(15, 29, 50, 0.92), rgba(8, 19, 31, 0.92)); border: 1px solid rgba(143, 211, 255, 0.12); border-radius: 18px; padding: 18px; }
     .metric strong { display:block; font-size: 28px; margin-top: 6px; color: #f2f6ff; }
+    .metric small { display:block; margin-top: 8px; color: var(--muted); }
     .admin-grid { display:grid; grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr); gap: 22px; align-items:start; }
     .admin-actions { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .admin-actions a { display:block; padding: 14px; border-radius: 16px; border: 1px solid rgba(143, 211, 255, 0.14); background: rgba(19, 39, 66, 0.34); color: var(--text); }
     .admin-actions strong { display:block; margin-bottom: 4px; }
+    .analytics-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .analytics-list { display:flex; flex-direction:column; gap: 12px; }
+    .analytics-item { padding: 14px; border-radius: 16px; border: 1px solid rgba(143, 211, 255, 0.12); background: rgba(19, 39, 66, 0.28); }
+    .analytics-item strong { display:block; margin-bottom: 4px; }
     .admin-table-wrap { overflow-x:auto; }
     .media-thumb { max-width:110px; border-radius:12px; display:block; }
     .media-library-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -176,7 +182,7 @@ foreach ($adminSections as $section) {
     code { background: rgba(143, 211, 255, 0.08); padding: 2px 6px; border-radius: 6px; }
     hr { border: 0; border-top: 1px solid rgba(143, 211, 255, 0.12); margin: 20px 0; }
     @media (max-width: 1100px) {
-      .admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .admin-metrics, .analytics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .admin-grid, .admin-form-grid, .security-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 900px) {
@@ -189,7 +195,7 @@ foreach ($adminSections as $section) {
       .admin-topbar { flex-direction: column; }
     }
     @media (max-width: 640px) {
-      .admin-metrics, .admin-actions, .security-stat-grid, .admin-nav, .media-library-grid, .category-grid { grid-template-columns: 1fr; }
+      .admin-metrics, .admin-actions, .security-stat-grid, .admin-nav, .media-library-grid, .category-grid, .analytics-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 900px) {
       .media-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

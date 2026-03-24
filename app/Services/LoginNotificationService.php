@@ -9,9 +9,10 @@ use App\Models\User;
 
 final class LoginNotificationService
 {
-    public function sendLoginNotice(array $user, string $method, string $ip, string $userAgent): void
+    public function sendLoginNotice(array $user, string $method, string $ip, string $userAgent, string $revocationToken): void
     {
         $timezone = app_timezone();
+        $revokeUrl = app_url('/login/session/revoke/' . urlencode($revocationToken));
         $body = implode("\n", [
             'A login to your CyberBlog account was detected.',
             '',
@@ -20,7 +21,8 @@ final class LoginNotificationService
             'Browser: ' . $userAgent,
             'Method: ' . $method,
             '',
-            'If this was not you, contact an administrator immediately.',
+            "If this was not you, use the link below to invalidate this session key:",
+            "It's not me: " . $revokeUrl,
         ]);
 
         (new EmailService())->send((string) $user['email'], 'CyberBlog login notice', $body, (string) $user['display_name']);

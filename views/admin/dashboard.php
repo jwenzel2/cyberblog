@@ -18,6 +18,8 @@
   <div class="metric"><span class="muted">Imports</span><strong><?= (int) $stats['imports'] ?></strong></div>
   <div class="metric"><span class="muted">Passkeys</span><strong><?= (int) $stats['passkeys'] ?></strong></div>
   <div class="metric"><span class="muted">Recovery Codes</span><strong><?= (int) $stats['recovery_codes'] ?></strong></div>
+  <div class="metric"><span class="muted">Site Visits Today</span><strong><?= (int) $stats['site_visits_today'] ?></strong><small>Unique session visits</small></div>
+  <div class="metric"><span class="muted">Post Opens Today</span><strong><?= (int) $stats['post_views_today'] ?></strong><small>Article page loads</small></div>
 </section>
 
 <div class="admin-grid">
@@ -30,6 +32,7 @@
     </div>
     <div class="admin-actions">
       <a href="/admin/preferences"><strong>Preferences</strong><span class="muted">Site-wide defaults and SMTP delivery settings.</span></a>
+      <a href="/admin/analytics"><strong>Analytics</strong><span class="muted">Review site visits and post open volume.</span></a>
       <a href="/admin/posts"><strong>Posts</strong><span class="muted">Publish, edit, and organize article output.</span></a>
       <a href="/admin/categories"><strong>Categories</strong><span class="muted">Manage nested taxonomy for content grouping.</span></a>
       <a href="/admin/media"><strong>Media</strong><span class="muted">Upload and review the media library.</span></a>
