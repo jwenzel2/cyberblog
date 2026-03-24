@@ -100,6 +100,8 @@ final class Post
 
     public static function save(array $data, ?int $id = null): int
     {
+        $publishedAt = self::resolvePublishedAt($data, $id);
+
         if ($id) {
             $stmt = Database::connection()->prepare(
                 'UPDATE posts
@@ -114,7 +116,7 @@ final class Post
                 'excerpt' => $data['excerpt'],
                 'body_html' => $data['body_html'],
                 'status' => $data['status'],
-                'published_at' => $data['published_at'] ?: null,
+                'published_at' => $publishedAt,
                 'featured_media_id' => $data['featured_media_id'] ?: null,
                 'author_id' => $data['author_id'] ?: null,
                 'updated_at' => now(),
@@ -132,7 +134,7 @@ final class Post
             'excerpt' => $data['excerpt'],
             'body_html' => $data['body_html'],
             'status' => $data['status'],
-            'published_at' => $data['published_at'] ?: null,
+            'published_at' => $publishedAt,
             'featured_media_id' => $data['featured_media_id'] ?: null,
             'author_id' => $data['author_id'] ?: null,
             'legacy_wp_id' => $data['legacy_wp_id'] ?? null,
@@ -225,5 +227,26 @@ final class Post
             'total' => $total,
             'total_pages' => max(1, (int) ceil($total / $perPage)),
         ];
+    }
+
+    private static function resolvePublishedAt(array $data, ?int $id = null): ?string
+    {
+        $submittedPublishedAt = trim((string) ($data['published_at'] ?? ''));
+        if ($submittedPublishedAt !== '') {
+            return $submittedPublishedAt;
+        }
+
+        if (($data['status'] ?? 'draft') !== 'published') {
+            return null;
+        }
+
+        if ($id !== null) {
+            $existing = self::find($id);
+            if (!empty($existing['published_at'])) {
+                return (string) $existing['published_at'];
+            }
+        }
+
+        return now();
     }
 }
