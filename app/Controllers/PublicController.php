@@ -38,7 +38,7 @@ final class PublicController
             'title' => $this->pageTitle((string) $post['title']),
             'post' => $post,
             'categories' => Category::tree(),
-            'sharingEnabled' => Preference::get('sharing_enabled', '1') === '1',
+            'shareServices' => $this->shareServices(),
             'shareUrl' => app_url('/post/' . urlencode((string) $post['slug'])),
             'seo' => $this->seoData(
                 title: $this->pageTitle((string) $post['title']),
@@ -161,6 +161,15 @@ final class PublicController
             'bing_site_verification' => trim((string) Preference::get('seo_bing_site_verification', '')),
             'image_url' => $imageUrl,
             'type' => $type,
+        ];
+    }
+
+    private function shareServices(): array
+    {
+        return [
+            'facebook' => Preference::get('sharing_facebook_enabled', '1') === '1',
+            'linkedin' => Preference::get('sharing_linkedin_enabled', '1') === '1',
+            'x' => Preference::get('sharing_x_enabled', '1') === '1',
         ];
     }
 }

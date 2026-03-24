@@ -1,7 +1,7 @@
 <header class="admin-topbar">
   <div>
     <h1>Sharing</h1>
-    <p>Control whether public articles expose social share links for Facebook and LinkedIn.</p>
+    <p>Control which social networks appear in the sharing block on public article pages.</p>
   </div>
 </header>
 
@@ -12,14 +12,22 @@
     <div class="page-header">
       <div>
         <h2>Article Sharing</h2>
-        <p class="muted">Enabled by default. When active, published article pages show Facebook and LinkedIn share actions.</p>
+        <p class="muted">Each sharing service is enabled by default, and you can turn individual networks on or off at any time.</p>
       </div>
     </div>
     <label>
-      <input type="checkbox" name="sharing_enabled" value="1" <?= ($preferences['sharing_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
-      Enable article sharing links on public posts
+      <input type="checkbox" name="sharing_facebook_enabled" value="1" <?= ($preferences['sharing_facebook_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
+      Enable Facebook sharing
     </label>
-    <p class="muted">Disabling this removes the “Share this:” block from article pages.</p>
+    <label>
+      <input type="checkbox" name="sharing_linkedin_enabled" value="1" <?= ($preferences['sharing_linkedin_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
+      Enable LinkedIn sharing
+    </label>
+    <label>
+      <input type="checkbox" name="sharing_x_enabled" value="1" <?= ($preferences['sharing_x_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
+      Enable X sharing
+    </label>
+    <p class="muted">Only enabled services appear under the “Share this:” block on article pages.</p>
     <button type="submit">Save Sharing Settings</button>
   </form>
 </section>

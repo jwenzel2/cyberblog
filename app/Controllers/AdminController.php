@@ -472,7 +472,9 @@ final class AdminController
         Auth::requireAdmin();
         $this->verifyCsrf();
 
-        Preference::set('sharing_enabled', !empty($_POST['sharing_enabled']) ? '1' : '0');
+        Preference::set('sharing_facebook_enabled', !empty($_POST['sharing_facebook_enabled']) ? '1' : '0');
+        Preference::set('sharing_linkedin_enabled', !empty($_POST['sharing_linkedin_enabled']) ? '1' : '0');
+        Preference::set('sharing_x_enabled', !empty($_POST['sharing_x_enabled']) ? '1' : '0');
 
         Session::flash('status', 'Sharing preferences updated.');
         Response::redirect('/admin/sharing');

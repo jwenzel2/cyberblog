@@ -11,7 +11,9 @@ final class PreferenceService
     public static function seedDefaults(): void
     {
         Preference::setIfMissing('articles_per_page', '10');
-        Preference::setIfMissing('sharing_enabled', '1');
+        Preference::setIfMissing('sharing_facebook_enabled', '1');
+        Preference::setIfMissing('sharing_linkedin_enabled', '1');
+        Preference::setIfMissing('sharing_x_enabled', '1');
         Preference::setIfMissing('smtp_enabled', '0');
         Preference::setIfMissing('smtp_host', '');
         Preference::setIfMissing('smtp_port', '587');
