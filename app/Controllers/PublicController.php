@@ -38,6 +38,8 @@ final class PublicController
             'title' => $this->pageTitle((string) $post['title']),
             'post' => $post,
             'categories' => Category::tree(),
+            'sharingEnabled' => Preference::get('sharing_enabled', '1') === '1',
+            'shareUrl' => app_url('/post/' . urlencode((string) $post['slug'])),
             'seo' => $this->seoData(
                 title: $this->pageTitle((string) $post['title']),
                 description: seo_excerpt((string) ($post['excerpt'] ?: $post['body_html'])),

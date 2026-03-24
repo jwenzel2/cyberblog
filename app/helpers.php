@@ -22,8 +22,17 @@ function app_timezone(): string
 
 function app_url(string $path = '/'): string
 {
-    $base = rtrim((string) \App\Core\Env::get('APP_URL', ''), '/');
     $normalizedPath = '/' . ltrim($path, '/');
+    $base = rtrim((string) \App\Core\Env::get('APP_URL', ''), '/');
+
+    if ($base === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if ($host !== '') {
+            $base = $scheme . '://' . $host;
+        }
+    }
+
     return $base !== '' ? $base . $normalizedPath : $normalizedPath;
 }
 

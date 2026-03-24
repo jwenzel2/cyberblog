@@ -71,6 +71,8 @@ $router->post('/admin/users/{id}/edit', [AdminController::class, 'updateUser']);
 $router->post('/admin/users/{id}/unlock', [AdminController::class, 'unlockUser']);
 $router->get('/admin/preferences', [AdminController::class, 'preferences']);
 $router->post('/admin/preferences', [AdminController::class, 'updatePreferences']);
+$router->get('/admin/sharing', [AdminController::class, 'sharing']);
+$router->post('/admin/sharing', [AdminController::class, 'updateSharing']);
 $router->get('/admin/security', [AdminController::class, 'security']);
 $router->get('/admin/security/bootstrap', [AdminController::class, 'securityBootstrap']);
 $router->post('/admin/security/passkeys/options', [AdminController::class, 'registrationOptions']);

@@ -420,6 +420,16 @@ final class AdminController
         ]);
     }
 
+    public function sharing(): void
+    {
+        Auth::requireAdmin();
+        View::render('admin/sharing', [
+            'title' => 'Sharing',
+            'flash' => Session::flash('status'),
+            'preferences' => Preference::all(),
+        ]);
+    }
+
     public function updatePreferences(): void
     {
         $user = Auth::requireAdmin();
@@ -453,6 +463,17 @@ final class AdminController
 
         Session::flash('status', 'Preferences updated.');
         Response::redirect('/admin/preferences');
+    }
+
+    public function updateSharing(): void
+    {
+        Auth::requireAdmin();
+        $this->verifyCsrf();
+
+        Preference::set('sharing_enabled', !empty($_POST['sharing_enabled']) ? '1' : '0');
+
+        Session::flash('status', 'Sharing preferences updated.');
+        Response::redirect('/admin/sharing');
     }
 
     private function persistPreferencesFromRequest(): array

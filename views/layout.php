@@ -18,6 +18,7 @@ $openGraphType = trim((string) ($seo['type'] ?? 'website'));
 
 $adminSections = [
     ['label' => 'Preferences', 'href' => '/admin/preferences'],
+    ['label' => 'Sharing', 'href' => '/admin/sharing'],
     ['label' => 'Posts', 'href' => '/admin/posts'],
     ['label' => 'Categories', 'href' => '/admin/categories'],
     ['label' => 'Media', 'href' => '/admin/media'],
@@ -95,6 +96,12 @@ foreach ($adminSections as $section) {
     .danger { color: var(--danger); }
     .tree { list-style: none; padding-left: 16px; }
     .post-body img { max-width: 100%; border-radius: 12px; }
+    .share-block { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .share-block strong { display:block; margin-bottom: 12px; }
+    .share-links { display:flex; gap: 12px; flex-wrap:wrap; }
+    .share-link { display:inline-flex; align-items:center; gap: 10px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: #11243b; color: var(--text); }
+    .share-link svg { width: 18px; height: 18px; fill: currentColor; }
+    .share-link:hover { border-color: var(--link); color: #ffffff; }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align:left; padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
     .tag { display:inline-block; padding: 4px 8px; border-radius: 999px; background: #11243b; border: 1px solid var(--line); color: var(--muted); margin-right: 6px; }
