@@ -118,9 +118,21 @@ foreach ($adminSections as $section) {
     .page-jump { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .page-jump input { width:90px; margin:0; }
     .stack { display:flex; flex-direction:column; gap:12px; }
-    .multi-select { position:relative; }
-    .multi-select-panel { position:absolute; left:0; right:0; top:calc(100% + 8px); background: #091423; border:1px solid var(--line); border-radius:12px; padding:12px; max-height:280px; overflow:auto; z-index:10; display:none; }
-    .multi-select.open .multi-select-panel { display:block; }
+    .multi-select { border: 1px solid rgba(143, 211, 255, 0.14); border-radius: 16px; background: rgba(7, 17, 29, 0.72); padding: 14px; }
+    .multi-select-panel { display:flex; flex-direction:column; gap:12px; }
+    .multi-select-search { margin: 0; }
+    .multi-select-list { display:flex; flex-direction:column; gap:8px; max-height: 272px; overflow-y:auto; padding-right: 4px; }
+    .multi-select-option { display:flex; align-items:flex-start; gap:10px; padding: 10px 12px; border: 1px solid rgba(143, 211, 255, 0.12); border-radius: 12px; background: rgba(15, 29, 50, 0.48); }
+    .multi-select-option span { display:block; line-height: 1.35; word-break: break-word; }
+    .multi-select-option.is-hidden { display:none; }
+    .multi-select-option input { margin-top: 3px; }
+    .multi-select-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top: 4px; }
+    .text-link { background: none; border: 0; color: var(--link); padding: 0; border-radius: 0; }
+    .text-link:hover { color: #ffffff; }
+    .dialog-backdrop { position: fixed; inset: 0; background: rgba(2, 8, 15, 0.76); display:flex; align-items:center; justify-content:center; padding: 20px; z-index: 60; }
+    .dialog-backdrop.hidden { display:none !important; }
+    .dialog-card { width: min(100%, 460px); background: linear-gradient(180deg, rgba(15, 29, 50, 0.98), rgba(8, 19, 31, 0.98)); border: 1px solid rgba(143, 211, 255, 0.18); border-radius: 22px; padding: 22px; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35); }
+    .dialog-actions { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
     .two-col { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
     .hidden { display:none !important; }
     .page-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom: 18px; }

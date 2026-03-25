@@ -181,16 +181,32 @@ final class AdminController
         Auth::requireAdmin();
         $this->verifyCsrf();
         $baseSlug = SlugService::slugify((string) (trim((string) ($_POST['slug'] ?? '')) ?: $_POST['name']));
+        $isAjax = (
+            (string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest'
+            || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')
+        );
 
         try {
-            Category::create([
+            $categoryId = Category::create([
                 'name' => trim((string) $_POST['name']),
                 'slug' => SlugService::unique('categories', $baseSlug),
                 'description' => trim((string) ($_POST['description'] ?? '')),
                 'parent_id' => (int) ($_POST['parent_id'] ?? 0),
             ]);
+
+            if ($isAjax) {
+                Response::json([
+                    'message' => 'Category created.',
+                    'category' => Category::find($categoryId),
+                    'categoryOptions' => Category::optionsWithDepth(),
+                ], 201);
+            }
+
             Session::flash('status', 'Category created.');
         } catch (RuntimeException $e) {
+            if ($isAjax) {
+                Response::json(['error' => $e->getMessage()], 422);
+            }
             Session::flash('status', $e->getMessage());
         }
 

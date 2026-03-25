@@ -4,6 +4,7 @@ $selectedCategories = array_map('intval', $post['category_ids'] ?? []);
 $featuredId = (int) ($post['featured_media_id'] ?? 0);
 $selectedAuthorId = (int) ($post['author_id'] ?? $user['id']);
 $featuredAsset = $featuredMedia ?? null;
+$categoryOptions = $categoryOptions ?? [];
 foreach ($media as $asset) {
     if ((int) $asset['id'] === $featuredId) {
         $featuredAsset = $asset;
@@ -79,14 +80,30 @@ foreach ($media as $asset) {
 
       <label>Categories</label>
       <div class="multi-select" id="category-select">
-        <button type="button" class="btn" id="category-toggle">Choose categories</button>
         <div class="multi-select-panel">
-          <?php foreach ($categoryOptions as $option): ?>
-            <label style="display:block;">
-              <input type="checkbox" name="category_ids[]" value="<?= (int) $option['id'] ?>" <?= in_array((int) $option['id'], $selectedCategories, true) ? 'checked' : '' ?>>
-              <?= str_repeat('-- ', (int) ($option['depth'] ?? 0)) . htmlspecialchars($option['name']) ?>
-            </label>
-          <?php endforeach; ?>
+          <input
+            type="search"
+            id="category-search"
+            class="multi-select-search"
+            placeholder="Search categories"
+            autocomplete="off"
+          >
+          <div class="multi-select-list" id="category-list">
+            <?php foreach ($categoryOptions as $option): ?>
+                <label
+                  class="multi-select-option"
+                  data-category-option
+                  data-category-name="<?= htmlspecialchars(strtolower((string) $option['name']), ENT_QUOTES) ?>"
+                >
+                <input type="checkbox" name="category_ids[]" value="<?= (int) $option['id'] ?>" <?= in_array((int) $option['id'], $selectedCategories, true) ? 'checked' : '' ?>>
+                <span><?= str_repeat('-- ', (int) ($option['depth'] ?? 0)) . htmlspecialchars($option['name']) ?></span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+          <div class="multi-select-footer">
+            <span class="muted" id="category-selection-summary"><?= count($selectedCategories) ?> selected</span>
+            <button type="button" class="text-link" id="open-category-dialog">Add category</button>
+          </div>
         </div>
       </div>
 
@@ -125,8 +142,43 @@ foreach ($media as $asset) {
     </aside>
   </div>
 </form>
+
+<div class="dialog-backdrop hidden" id="category-dialog" aria-hidden="true">
+  <div class="dialog-card">
+    <div class="page-header">
+      <div>
+        <h2>Add Category</h2>
+        <p class="muted">Create a new category and optionally place it under an existing parent.</p>
+      </div>
+    </div>
+    <form id="category-dialog-form">
+      <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Core\Csrf::token()) ?>">
+      <label for="new-category-name">Category name</label>
+      <input id="new-category-name" name="name" required>
+      <label for="new-category-parent">Parent category</label>
+      <select id="new-category-parent" name="parent_id">
+        <option value="">No parent</option>
+        <?php foreach ($categoryOptions as $option): ?>
+          <option value="<?= (int) $option['id'] ?>"><?= str_repeat('-- ', (int) ($option['depth'] ?? 0)) . htmlspecialchars($option['name']) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="cancel-category-dialog">Cancel</button>
+        <button type="submit" id="submit-category-dialog">Create Category</button>
+      </div>
+    </form>
+  </div>
+</div>
 <script>
 const csrfToken = <?= json_encode(\App\Core\Csrf::token()) ?>;
+let categoryOptions = <?= json_encode(array_map(
+  static fn(array $option): array => [
+    'id' => (int) $option['id'],
+    'name' => (string) $option['name'],
+    'depth' => (int) ($option['depth'] ?? 0),
+  ],
+  $categoryOptions
+)) ?>;
 const editorSurface = document.getElementById('editor-surface');
 const bodyField = document.getElementById('body_html');
 const syncEditor = () => { bodyField.value = editorSurface.innerHTML.trim(); };
@@ -154,11 +206,122 @@ document.getElementById('insert-code')?.addEventListener('click', () => {
 editorSurface.addEventListener('input', syncEditor);
 document.querySelector('form')?.addEventListener('submit', syncEditor);
 
-const categorySelect = document.getElementById('category-select');
-document.getElementById('category-toggle')?.addEventListener('click', () => categorySelect.classList.toggle('open'));
-document.addEventListener('click', (event) => {
-  if (!categorySelect.contains(event.target)) {
-    categorySelect.classList.remove('open');
+const categoryList = document.getElementById('category-list');
+const categorySearch = document.getElementById('category-search');
+const categorySummary = document.getElementById('category-selection-summary');
+const categoryDialog = document.getElementById('category-dialog');
+const categoryDialogForm = document.getElementById('category-dialog-form');
+const categoryDialogName = document.getElementById('new-category-name');
+const categoryDialogParent = document.getElementById('new-category-parent');
+const categoryDialogSubmit = document.getElementById('submit-category-dialog');
+
+const escapeHtml = (value) => String(value).replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+const categoryLabel = (option) => `${'-- '.repeat(Number(option.depth || 0))}${option.name}`;
+const selectedCategoryIds = () => Array.from(categoryList.querySelectorAll('input[name="category_ids[]"]:checked')).map((input) => String(input.value));
+const updateCategorySummary = () => {
+  const count = selectedCategoryIds().length;
+  categorySummary.textContent = `${count} selected`;
+};
+const renderCategoryParentOptions = () => {
+  categoryDialogParent.innerHTML = '<option value="">No parent</option>';
+  categoryOptions.forEach((option) => {
+    const node = document.createElement('option');
+    node.value = String(option.id);
+    node.textContent = categoryLabel(option);
+    categoryDialogParent.appendChild(node);
+  });
+};
+const renderCategoryList = (selectedIds = selectedCategoryIds()) => {
+  categoryList.innerHTML = '';
+  categoryOptions.forEach((option) => {
+    const label = document.createElement('label');
+    label.className = 'multi-select-option';
+    label.setAttribute('data-category-option', '');
+    label.dataset.categoryName = option.name.toLowerCase();
+    label.innerHTML = `<input type="checkbox" name="category_ids[]" value="${option.id}"${selectedIds.includes(String(option.id)) ? ' checked' : ''}><span>${escapeHtml(categoryLabel(option))}</span>`;
+    categoryList.appendChild(label);
+  });
+  bindCategorySelectionHandlers();
+  filterCategories();
+  updateCategorySummary();
+};
+const filterCategories = () => {
+  const query = (categorySearch.value || '').trim().toLowerCase();
+  categoryList.querySelectorAll('[data-category-option]').forEach((option) => {
+    option.classList.toggle('is-hidden', query !== '' && !option.dataset.categoryName.includes(query));
+  });
+};
+const bindCategorySelectionHandlers = () => {
+  categoryList.querySelectorAll('input[name="category_ids[]"]').forEach((input) => {
+    input.addEventListener('change', updateCategorySummary);
+  });
+};
+const openCategoryDialog = () => {
+  categoryDialog.classList.remove('hidden');
+  categoryDialog.setAttribute('aria-hidden', 'false');
+  categoryDialogForm.reset();
+  renderCategoryParentOptions();
+  window.setTimeout(() => categoryDialogName.focus(), 0);
+};
+const closeCategoryDialog = () => {
+  categoryDialog.classList.add('hidden');
+  categoryDialog.setAttribute('aria-hidden', 'true');
+  categoryDialogSubmit.disabled = false;
+};
+
+bindCategorySelectionHandlers();
+updateCategorySummary();
+categorySearch?.addEventListener('input', filterCategories);
+document.getElementById('open-category-dialog')?.addEventListener('click', openCategoryDialog);
+document.getElementById('cancel-category-dialog')?.addEventListener('click', closeCategoryDialog);
+categoryDialog?.addEventListener('click', (event) => {
+  if (event.target === categoryDialog) {
+    closeCategoryDialog();
+  }
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !categoryDialog.classList.contains('hidden')) {
+    closeCategoryDialog();
+  }
+});
+categoryDialogForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  categoryDialogSubmit.disabled = true;
+  const formData = new FormData(categoryDialogForm);
+  if (!formData.get('parent_id')) {
+    formData.set('parent_id', '0');
+  }
+
+  try {
+    const response = await fetch('/admin/categories', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: formData,
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || 'Unable to create category.');
+    }
+
+    categoryOptions = Array.isArray(payload.categoryOptions) ? payload.categoryOptions.map((option) => ({
+      id: Number(option.id),
+      name: String(option.name),
+      depth: Number(option.depth || 0),
+    })) : categoryOptions;
+    const createdId = String(payload.category?.id || '');
+    const selectedIds = selectedCategoryIds();
+    if (createdId) {
+      selectedIds.push(createdId);
+    }
+    renderCategoryParentOptions();
+    renderCategoryList(selectedIds);
+    closeCategoryDialog();
+  } catch (error) {
+    window.alert(error.message || 'Unable to create category.');
+    categoryDialogSubmit.disabled = false;
   }
 });
 
