@@ -251,6 +251,9 @@ foreach ($adminSections as $section) {
       <div class="nav">
         <a class="brand" href="/">CyberBlog</a>
         <div class="nav-links">
+          <?php if ($viewer && User::canManagePosts($viewer)): ?>
+            <a href="/admin/posts/create">New Post</a>
+          <?php endif; ?>
           <a href="/">Home</a>
           <?php if ($viewer && User::hasRole($viewer, User::ROLE_ADMIN)): ?>
             <a href="/admin">Admin</a>
