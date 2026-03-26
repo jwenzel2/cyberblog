@@ -11,7 +11,7 @@ final class Analytics
 {
     public static function recordSiteVisit(): void
     {
-        $today = gmdate('Y-m-d');
+        $today = app_date('Y-m-d');
         if (Session::get('analytics.site_visit_date') === $today) {
             return;
         }
@@ -34,7 +34,7 @@ final class Analytics
         );
         $stmt->execute([
             'post_id' => $postId,
-            'metric_date' => gmdate('Y-m-d'),
+            'metric_date' => app_date('Y-m-d'),
         ]);
     }
 
@@ -59,7 +59,7 @@ final class Analytics
              ORDER BY views DESC, p.title ASC
              LIMIT 10'
         );
-        $stmt->execute(['start_date' => gmdate('Y-m-d', strtotime('-' . max(0, $days - 1) . ' days'))]);
+        $stmt->execute(['start_date' => app_date('Y-m-d', strtotime('-' . max(0, $days - 1) . ' days'))]);
 
         return $stmt->fetchAll();
     }
@@ -72,7 +72,7 @@ final class Analytics
              WHERE metric_date >= :start_date
              ORDER BY metric_date DESC'
         );
-        $stmt->execute(['start_date' => gmdate('Y-m-d', strtotime('-' . max(0, $days - 1) . ' days'))]);
+        $stmt->execute(['start_date' => app_date('Y-m-d', strtotime('-' . max(0, $days - 1) . ' days'))]);
 
         return $stmt->fetchAll();
     }
@@ -81,9 +81,9 @@ final class Analytics
     {
         $pdo = Database::connection();
         $ranges = [
-            'today' => gmdate('Y-m-d'),
-            'week' => gmdate('Y-m-d', strtotime('-6 days')),
-            'month' => gmdate('Y-m-d', strtotime('-29 days')),
+            'today' => app_date('Y-m-d'),
+            'week' => app_date('Y-m-d', strtotime('-6 days')),
+            'month' => app_date('Y-m-d', strtotime('-29 days')),
         ];
 
         $result = [];

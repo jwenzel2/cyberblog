@@ -20,6 +20,13 @@ function app_timezone(): string
     return in_array($configured, timezone_identifiers_list(), true) ? $configured : $fallback;
 }
 
+function app_date(string $format, ?int $timestamp = null): string
+{
+    $tz = new DateTimeZone(app_timezone());
+    $dt = new DateTimeImmutable($timestamp !== null ? '@' . $timestamp : 'now', new DateTimeZone('UTC'));
+    return $dt->setTimezone($tz)->format($format);
+}
+
 function app_url(string $path = '/'): string
 {
     $normalizedPath = '/' . ltrim($path, '/');
