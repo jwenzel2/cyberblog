@@ -18,6 +18,7 @@ if (str_starts_with($path, '/media/')) {
     }
 
     header('Content-Type: ' . (mime_content_type($file) ?: 'application/octet-stream'));
+    header('Cache-Control: public, max-age=31536000, immutable');
     readfile($file);
     exit;
 }
@@ -31,6 +32,8 @@ $router = new Router();
 
 $router->get('/robots.txt', [PublicController::class, 'robots']);
 $router->get('/sitemap.xml', [PublicController::class, 'sitemap']);
+$router->get('/feed', [PublicController::class, 'feed']);
+$router->get('/indexnow-key.txt', [PublicController::class, 'indexNowKey']);
 $router->get('/', [PublicController::class, 'home']);
 $router->get('/post/{slug}', [PublicController::class, 'post']);
 $router->get('/category/{slug}', [PublicController::class, 'category']);

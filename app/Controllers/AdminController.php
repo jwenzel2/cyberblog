@@ -110,8 +110,12 @@ final class AdminController
     {
         $user = Auth::requireAdmin();
         $this->verifyCsrf();
-        $postId = Post::save($this->postPayload($user));
+        $payload = $this->postPayload($user);
+        $postId = Post::save($payload);
         Post::syncCategories($postId, $_POST['category_ids'] ?? []);
+        if (($payload['status'] ?? '') === 'published') {
+            notify_indexnow(app_url('/post/' . urlencode($payload['slug'])));
+        }
         Session::flash('status', 'Post created.');
         Response::redirect('/admin/posts');
     }
@@ -143,8 +147,12 @@ final class AdminController
         if (!$post) {
             Response::abort(404, 'Post not found.');
         }
-        Post::save($this->postPayload($user, $post), (int) $id);
+        $payload = $this->postPayload($user, $post);
+        Post::save($payload, (int) $id);
         Post::syncCategories((int) $id, $_POST['category_ids'] ?? []);
+        if (($payload['status'] ?? '') === 'published') {
+            notify_indexnow(app_url('/post/' . urlencode($payload['slug'])));
+        }
         Session::flash('status', 'Post updated.');
         Response::redirect('/admin/posts');
     }
@@ -535,6 +543,7 @@ final class AdminController
         $seoAllowIndexing = !empty($_POST['seo_allow_indexing']) ? '1' : '0';
         $seoGoogleSiteVerification = trim((string) ($_POST['seo_google_site_verification'] ?? ''));
         $seoBingSiteVerification = trim((string) ($_POST['seo_bing_site_verification'] ?? ''));
+        $indexnowApiKey = trim((string) ($_POST['indexnow_api_key'] ?? ''));
         if (!in_array($siteTimezone, timezone_identifiers_list(), true)) {
             $siteTimezone = date_default_timezone_get() ?: 'UTC';
         }
@@ -546,6 +555,7 @@ final class AdminController
         Preference::set('seo_allow_indexing', $seoAllowIndexing);
         Preference::set('seo_google_site_verification', $seoGoogleSiteVerification);
         Preference::set('seo_bing_site_verification', $seoBingSiteVerification);
+        Preference::set('indexnow_api_key', $indexnowApiKey);
         Preference::set('smtp_enabled', $smtpEnabled);
         Preference::set('smtp_host', $smtpHost);
         Preference::set('smtp_port', $smtpPort);

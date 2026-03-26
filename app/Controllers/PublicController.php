@@ -9,23 +9,44 @@ use App\Models\Analytics;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Preference;
+use App\Models\User;
 
 final class PublicController
 {
     public function home(): void
     {
         Analytics::recordSiteVisit();
-        $pagination = Post::recentPublished($this->page(), $this->perPage());
+        $page = $this->page();
+        $perPage = $this->perPage();
+        $pagination = Post::recentPublished($page, $perPage);
+        $siteName = trim((string) Preference::get('seo_site_name', 'CyberBlog'));
+
+        $seo = $this->seoData(
+            title: $this->pageTitle('Home'),
+            description: (string) Preference::get('seo_default_description', ''),
+            canonicalUrl: current_url()
+        );
+        $seo['json_ld'] = [
+            [
+                '@context' => 'https://schema.org',
+                '@type' => 'WebSite',
+                'name' => $siteName,
+                'url' => app_url('/'),
+                'potentialAction' => [
+                    '@type' => 'SearchAction',
+                    'target' => app_url('/') . '?s={search_term_string}',
+                    'query-input' => 'required name=search_term_string',
+                ],
+            ],
+        ];
+        $seo = $this->addPaginationLinks($seo, $pagination, app_url('/'));
+
         View::render('public/home', [
             'title' => $this->pageTitle('Home'),
             'posts' => $pagination['items'],
             'pagination' => $pagination,
             'categories' => Category::tree(),
-            'seo' => $this->seoData(
-                title: $this->pageTitle('Home'),
-                description: (string) Preference::get('seo_default_description', ''),
-                canonicalUrl: current_url()
-            ),
+            'seo' => $seo,
         ]);
     }
 
@@ -38,19 +59,66 @@ final class PublicController
         Analytics::recordSiteVisit();
         Analytics::recordPostView((int) $post['id']);
 
+        $siteName = trim((string) Preference::get('seo_site_name', 'CyberBlog'));
+        $canonicalUrl = app_url('/post/' . urlencode($post['slug']));
+        $imageUrl = !empty($post['featured_image']) ? app_url((string) $post['featured_image']) : null;
+        $description = seo_excerpt((string) ($post['excerpt'] ?: $post['body_html']));
+        $author = !empty($post['author_id']) ? User::find((int) $post['author_id']) : null;
+        $authorName = $author['display_name'] ?? 'Unknown';
+        $categories = $post['categories'] ?? [];
+        $firstCategory = $categories[0] ?? null;
+
+        $breadcrumbs = [['name' => 'Home', 'url' => app_url('/')]];
+        if ($firstCategory) {
+            $breadcrumbs[] = ['name' => $firstCategory['name'], 'url' => app_url('/category/' . urlencode($firstCategory['slug']))];
+        }
+        $breadcrumbs[] = ['name' => $post['title']];
+
+        $seo = $this->seoData(
+            title: $this->pageTitle((string) $post['title']),
+            description: $description,
+            canonicalUrl: $canonicalUrl,
+            imageUrl: $imageUrl,
+            type: 'article'
+        );
+
+        $seo['article_published_time'] = $post['published_at'] ? gmdate('c', strtotime($post['published_at'])) : null;
+        $seo['article_modified_time'] = $post['updated_at'] ? gmdate('c', strtotime($post['updated_at'])) : null;
+        $seo['article_author'] = $authorName;
+        $seo['article_section'] = $firstCategory['name'] ?? null;
+
+        $blogPosting = [
+            '@context' => 'https://schema.org',
+            '@type' => 'BlogPosting',
+            'headline' => $post['title'],
+            'description' => $description,
+            'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonicalUrl],
+            'author' => ['@type' => 'Person', 'name' => $authorName],
+            'publisher' => ['@type' => 'Organization', 'name' => $siteName, 'url' => app_url('/')],
+        ];
+        if ($post['published_at']) {
+            $blogPosting['datePublished'] = gmdate('c', strtotime($post['published_at']));
+        }
+        if ($post['updated_at']) {
+            $blogPosting['dateModified'] = gmdate('c', strtotime($post['updated_at']));
+        }
+        if ($imageUrl) {
+            $blogPosting['image'] = $imageUrl;
+        }
+        if ($firstCategory) {
+            $blogPosting['articleSection'] = $firstCategory['name'];
+        }
+
+        $seo['json_ld'] = [$blogPosting, $this->breadcrumbListJsonLd($breadcrumbs)];
+
         View::render('public/post', [
             'title' => $this->pageTitle((string) $post['title']),
             'post' => $post,
             'categories' => Category::tree(),
             'shareServices' => $this->shareServices(),
             'shareUrl' => app_url('/post/' . urlencode((string) $post['slug'])),
-            'seo' => $this->seoData(
-                title: $this->pageTitle((string) $post['title']),
-                description: seo_excerpt((string) ($post['excerpt'] ?: $post['body_html'])),
-                canonicalUrl: app_url('/post/' . urlencode($post['slug'])),
-                imageUrl: !empty($post['featured_image']) ? app_url((string) $post['featured_image']) : null,
-                type: 'article'
-            ),
+            'breadcrumbs' => $breadcrumbs,
+            'seo' => $seo,
         ]);
     }
 
@@ -62,7 +130,27 @@ final class PublicController
         }
         Analytics::recordSiteVisit();
 
-        $pagination = Post::forCategory((int) $category['id'], $this->page(), $this->perPage());
+        $page = $this->page();
+        $perPage = $this->perPage();
+        $pagination = Post::forCategory((int) $category['id'], $page, $perPage);
+        $categoryUrl = app_url('/category/' . urlencode((string) $category['slug']));
+
+        $breadcrumbs = [['name' => 'Home', 'url' => app_url('/')]];
+        if (!empty($category['parent_id'])) {
+            $parent = Category::find((int) $category['parent_id']);
+            if ($parent) {
+                $breadcrumbs[] = ['name' => $parent['name'], 'url' => app_url('/category/' . urlencode($parent['slug']))];
+            }
+        }
+        $breadcrumbs[] = ['name' => $category['name']];
+
+        $seo = $this->seoData(
+            title: $this->pageTitle((string) $category['name']),
+            description: seo_excerpt((string) ($category['description'] ?: Preference::get('seo_default_description', ''))),
+            canonicalUrl: current_url()
+        );
+        $seo['json_ld'] = [$this->breadcrumbListJsonLd($breadcrumbs)];
+        $seo = $this->addPaginationLinks($seo, $pagination, $categoryUrl);
 
         View::render('public/category', [
             'title' => $this->pageTitle((string) $category['name']),
@@ -70,11 +158,8 @@ final class PublicController
             'posts' => $pagination['items'],
             'pagination' => $pagination,
             'categories' => Category::tree(),
-            'seo' => $this->seoData(
-                title: $this->pageTitle((string) $category['name']),
-                description: seo_excerpt((string) ($category['description'] ?: Preference::get('seo_default_description', ''))),
-                canonicalUrl: current_url()
-            ),
+            'breadcrumbs' => $breadcrumbs,
+            'seo' => $seo,
         ]);
     }
 
@@ -91,9 +176,12 @@ final class PublicController
 
     public function sitemap(): void
     {
+        $posts = Post::publishedForSitemap();
+        $latestPostDate = $posts[0]['updated_at'] ?? $posts[0]['published_at'] ?? $posts[0]['created_at'] ?? now();
+
         $urls = [[
             'loc' => app_url('/'),
-            'lastmod' => now(),
+            'lastmod' => (string) $latestPostDate,
             'changefreq' => 'daily',
             'priority' => '1.0',
         ]];
@@ -107,7 +195,7 @@ final class PublicController
             ];
         }
 
-        foreach (Post::publishedForSitemap() as $post) {
+        foreach ($posts as $post) {
             $urls[] = [
                 'loc' => app_url('/post/' . urlencode((string) $post['slug'])),
                 'lastmod' => (string) ($post['updated_at'] ?? $post['published_at'] ?? $post['created_at'] ?? now()),
@@ -129,6 +217,51 @@ final class PublicController
             echo "  </url>\n";
         }
         echo "</urlset>";
+        exit;
+    }
+
+    public function feed(): void
+    {
+        $siteName = trim((string) Preference::get('seo_site_name', 'CyberBlog'));
+        $siteDescription = trim((string) Preference::get('seo_default_description', ''));
+        $pagination = Post::recentPublished(1, 20);
+
+        http_response_code(200);
+        header('Content-Type: application/rss+xml; charset=utf-8');
+        echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+        echo "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">\n";
+        echo "  <channel>\n";
+        echo '    <title>' . htmlspecialchars($siteName, ENT_XML1) . "</title>\n";
+        echo '    <link>' . htmlspecialchars(app_url('/'), ENT_XML1) . "</link>\n";
+        echo '    <description>' . htmlspecialchars($siteDescription, ENT_XML1) . "</description>\n";
+        echo '    <atom:link href="' . htmlspecialchars(app_url('/feed'), ENT_XML1) . '" rel="self" type="application/rss+xml"/>' . "\n";
+        echo '    <lastBuildDate>' . gmdate('r') . "</lastBuildDate>\n";
+
+        foreach ($pagination['items'] as $post) {
+            $postUrl = app_url('/post/' . urlencode((string) $post['slug']));
+            $pubDate = gmdate('r', strtotime((string) ($post['published_at'] ?: $post['created_at'])));
+            $excerpt = seo_excerpt((string) ($post['excerpt'] ?: $post['body_html']), 300);
+
+            echo "    <item>\n";
+            echo '      <title>' . htmlspecialchars((string) $post['title'], ENT_XML1) . "</title>\n";
+            echo '      <link>' . htmlspecialchars($postUrl, ENT_XML1) . "</link>\n";
+            echo '      <description>' . htmlspecialchars($excerpt, ENT_XML1) . "</description>\n";
+            echo '      <pubDate>' . $pubDate . "</pubDate>\n";
+            echo '      <guid isPermaLink="true">' . htmlspecialchars($postUrl, ENT_XML1) . "</guid>\n";
+            echo "    </item>\n";
+        }
+
+        echo "  </channel>\n";
+        echo "</rss>";
+        exit;
+    }
+
+    public function indexNowKey(): void
+    {
+        $apiKey = trim((string) Preference::get('indexnow_api_key', ''));
+        http_response_code($apiKey !== '' ? 200 : 404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $apiKey;
         exit;
     }
 
@@ -176,5 +309,43 @@ final class PublicController
             'linkedin' => Preference::get('sharing_linkedin_enabled', '1') === '1',
             'x' => Preference::get('sharing_x_enabled', '1') === '1',
         ];
+    }
+
+    private function breadcrumbListJsonLd(array $breadcrumbs): array
+    {
+        $items = [];
+        foreach ($breadcrumbs as $i => $crumb) {
+            $item = [
+                '@type' => 'ListItem',
+                'position' => $i + 1,
+                'name' => $crumb['name'],
+            ];
+            if (isset($crumb['url'])) {
+                $item['item'] = $crumb['url'];
+            }
+            $items[] = $item;
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => $items,
+        ];
+    }
+
+    private function addPaginationLinks(array $seo, array $pagination, string $baseUrl): array
+    {
+        $page = (int) ($pagination['page'] ?? 1);
+        $totalPages = (int) ($pagination['total_pages'] ?? 1);
+        $separator = str_contains($baseUrl, '?') ? '&' : '?';
+
+        if ($page > 1) {
+            $seo['pagination_prev'] = $page === 2 ? $baseUrl : $baseUrl . $separator . 'page=' . ($page - 1);
+        }
+        if ($page < $totalPages) {
+            $seo['pagination_next'] = $baseUrl . $separator . 'page=' . ($page + 1);
+        }
+
+        return $seo;
     }
 }

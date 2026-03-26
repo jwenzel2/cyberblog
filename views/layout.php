@@ -59,6 +59,20 @@ foreach ($adminSections as $section) {
     <?php endif; ?>
     <?php if ($googleVerification !== ''): ?><meta name="google-site-verification" content="<?= htmlspecialchars($googleVerification) ?>"><?php endif; ?>
     <?php if ($bingVerification !== ''): ?><meta name="msvalidate.01" content="<?= htmlspecialchars($bingVerification) ?>"><?php endif; ?>
+    <?php if ($openGraphType === 'article'): ?>
+      <?php if (!empty($seo['article_published_time'])): ?><meta property="article:published_time" content="<?= htmlspecialchars($seo['article_published_time']) ?>"><?php endif; ?>
+      <?php if (!empty($seo['article_modified_time'])): ?><meta property="article:modified_time" content="<?= htmlspecialchars($seo['article_modified_time']) ?>"><?php endif; ?>
+      <?php if (!empty($seo['article_author'])): ?><meta property="article:author" content="<?= htmlspecialchars($seo['article_author']) ?>"><?php endif; ?>
+      <?php if (!empty($seo['article_section'])): ?><meta property="article:section" content="<?= htmlspecialchars($seo['article_section']) ?>"><?php endif; ?>
+    <?php endif; ?>
+    <?php if (!empty($seo['pagination_prev'])): ?><link rel="prev" href="<?= htmlspecialchars($seo['pagination_prev']) ?>"><?php endif; ?>
+    <?php if (!empty($seo['pagination_next'])): ?><link rel="next" href="<?= htmlspecialchars($seo['pagination_next']) ?>"><?php endif; ?>
+    <link rel="alternate" type="application/rss+xml" title="<?= htmlspecialchars(trim((string) ($seo['title'] ?? 'Feed'))) ?>" href="<?= htmlspecialchars(app_url('/feed')) ?>">
+    <?php if (!empty($seo['json_ld'])): ?>
+      <?php foreach ($seo['json_ld'] as $jsonLdItem): ?>
+        <?= json_ld_script($jsonLdItem) ?>
+      <?php endforeach; ?>
+    <?php endif; ?>
   <?php endif; ?>
   <style>
     :root {
@@ -213,6 +227,11 @@ foreach ($adminSections as $section) {
       .media-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    .breadcrumb { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; padding: 0; margin: 0 0 12px; font-size: 0.85rem; }
+    .breadcrumb li:not(:last-child)::after { content: "/"; margin-left: 4px; color: var(--muted); }
+    .breadcrumb a { color: var(--accent); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span[aria-current] { color: var(--muted); }
   </style>
 </head>
 <body class="<?= $isAdminPage ? 'admin-body' : '' ?>">

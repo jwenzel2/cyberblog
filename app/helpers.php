@@ -80,6 +80,46 @@ function seo_excerpt(?string $text, int $limit = 160): string
     return rtrim(mb_substr($plain, 0, max(0, $limit - 1))) . '…';
 }
 
+function json_ld_script(array $data): string
+{
+    return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>';
+}
+
+function notify_indexnow(string $url): void
+{
+    $apiKey = trim((string) \App\Models\Preference::get('indexnow_api_key', ''));
+    if ($apiKey === '') {
+        return;
+    }
+
+    $host = parse_url(app_url('/'), PHP_URL_HOST);
+    if (!$host) {
+        return;
+    }
+
+    $payload = json_encode([
+        'host' => $host,
+        'key' => $apiKey,
+        'urlList' => [$url],
+    ], JSON_UNESCAPED_SLASHES);
+
+    try {
+        $ch = curl_init('https://api.indexnow.org/indexnow');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json; charset=utf-8'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+    } catch (\Throwable) {
+        // Best-effort notification; failures are silently ignored.
+    }
+}
+
 function base64url_encode(string $data): string
 {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');

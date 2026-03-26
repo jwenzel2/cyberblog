@@ -1,5 +1,14 @@
 <div class="grid">
   <article class="card post-body">
+    <?php if (!empty($breadcrumbs)): ?>
+      <nav aria-label="Breadcrumb">
+        <ol class="breadcrumb">
+          <?php foreach ($breadcrumbs as $i => $crumb): ?>
+            <li><?php if (isset($crumb['url'])): ?><a href="<?= htmlspecialchars($crumb['url']) ?>"><?= htmlspecialchars($crumb['name']) ?></a><?php else: ?><span aria-current="page"><?= htmlspecialchars($crumb['name']) ?></span><?php endif; ?></li>
+          <?php endforeach; ?>
+        </ol>
+      </nav>
+    <?php endif; ?>
     <div class="muted"><?= htmlspecialchars($post['published_at'] ?: $post['created_at']) ?></div>
     <h1><?= htmlspecialchars($post['title']) ?></h1>
     <p>
@@ -8,7 +17,7 @@
       <?php endforeach; ?>
     </p>
     <?php if ($post['featured_image']): ?>
-      <img src="<?= htmlspecialchars($post['featured_image']) ?>" alt="" style="width:100%; margin-bottom:16px;">
+      <img src="<?= htmlspecialchars($post['featured_image']) ?>" alt="<?= htmlspecialchars($post['featured_image_alt'] ?? '') ?>" style="width:100%; margin-bottom:16px;">
     <?php endif; ?>
     <?= $post['body_html'] ?>
     <?php if (!empty(array_filter($shareServices ?? []))): ?>

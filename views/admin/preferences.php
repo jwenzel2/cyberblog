@@ -45,6 +45,9 @@
     <label>Bing site verification</label>
     <input name="seo_bing_site_verification" value="<?= htmlspecialchars($preferences['seo_bing_site_verification'] ?? '') ?>" placeholder="Paste the token from Bing Webmaster Tools">
     <p class="muted">Verification tokens are emitted as meta tags on public pages. Sitemap: <code><?= htmlspecialchars(app_url('/sitemap.xml')) ?></code></p>
+    <label>IndexNow API key (Bing instant indexing)</label>
+    <input name="indexnow_api_key" value="<?= htmlspecialchars($preferences['indexnow_api_key'] ?? '') ?>" placeholder="Enter a key to enable instant Bing indexing on publish">
+    <p class="muted">When set, publishing or updating a post notifies Bing immediately via <a href="https://www.bing.com/indexnow" target="_blank" rel="noopener">IndexNow</a>. RSS feed: <code><?= htmlspecialchars(app_url('/feed')) ?></code></p>
     <hr>
     <div class="page-header">
       <div>

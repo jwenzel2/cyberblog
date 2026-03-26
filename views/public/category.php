@@ -1,5 +1,14 @@
 <div class="grid">
   <main>
+    <?php if (!empty($breadcrumbs)): ?>
+      <nav aria-label="Breadcrumb">
+        <ol class="breadcrumb">
+          <?php foreach ($breadcrumbs as $i => $crumb): ?>
+            <li><?php if (isset($crumb['url'])): ?><a href="<?= htmlspecialchars($crumb['url']) ?>"><?= htmlspecialchars($crumb['name']) ?></a><?php else: ?><span aria-current="page"><?= htmlspecialchars($crumb['name']) ?></span><?php endif; ?></li>
+          <?php endforeach; ?>
+        </ol>
+      </nav>
+    <?php endif; ?>
     <div class="card">
       <h1><?= htmlspecialchars($category['name']) ?></h1>
       <p class="muted"><?= htmlspecialchars($category['description'] ?? '') ?></p>

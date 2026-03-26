@@ -12,7 +12,7 @@ final class Post
     public static function recentPublished(int $page = 1, int $perPage = 10): array
     {
         return self::paginate(
-            "SELECT p.*, m.public_url AS featured_image
+            "SELECT p.*, m.public_url AS featured_image, m.alt_text AS featured_image_alt
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
                 WHERE p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= UTC_TIMESTAMP())
@@ -56,7 +56,7 @@ final class Post
     public static function findPublishedBySlug(string $slug): ?array
     {
         $stmt = Database::connection()->prepare(
-            "SELECT p.*, m.public_url AS featured_image
+            "SELECT p.*, m.public_url AS featured_image, m.alt_text AS featured_image_alt
              FROM posts p
              LEFT JOIN media m ON m.id = p.featured_media_id
              WHERE p.slug = :slug AND p.status = 'published'
