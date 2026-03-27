@@ -179,6 +179,11 @@ let categoryOptions = <?= json_encode(array_map(
   ],
   $categoryOptions
 )) ?>;
+const titleInput = document.querySelector('input[name="title"]');
+const slugInput = document.querySelector('input[name="slug"]');
+const toSlug = (text) => text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+titleInput?.addEventListener('input', () => { slugInput.value = toSlug(titleInput.value); });
+
 const editorSurface = document.getElementById('editor-surface');
 const bodyField = document.getElementById('body_html');
 const syncEditor = () => { bodyField.value = editorSurface.innerHTML.trim(); };
