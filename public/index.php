@@ -13,13 +13,16 @@ use App\Core\Router;
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 if (str_starts_with($path, '/media/')) {
     $file = app_path('storage' . $path);
-    if (!is_file($file)) {
+    $realFile = realpath($file);
+    $mediaRoot = realpath(app_path('storage/media'));
+    if (!$realFile || !$mediaRoot || !str_starts_with($realFile, $mediaRoot . DIRECTORY_SEPARATOR)) {
         \App\Core\Response::abort(404, 'Media file not found');
     }
 
-    header('Content-Type: ' . (mime_content_type($file) ?: 'application/octet-stream'));
+    header('Content-Type: ' . (mime_content_type($realFile) ?: 'application/octet-stream'));
     header('Cache-Control: public, max-age=31536000, immutable');
-    readfile($file);
+    header('X-Content-Type-Options: nosniff');
+    readfile($realFile);
     exit;
 }
 

@@ -48,6 +48,9 @@ final class SmtpClient
             $this->command(base64_encode($password), [235]);
         }
 
+        if (preg_match('/[\r\n]/', $fromEmail . $toEmail)) {
+            throw new RuntimeException('Invalid email address: contains newline characters.');
+        }
         $this->command('MAIL FROM:<' . $fromEmail . '>', [250]);
         $this->command('RCPT TO:<' . $toEmail . '>', [250, 251]);
         $this->command('DATA', [354]);
@@ -55,7 +58,7 @@ final class SmtpClient
         $headers = [
             'From: ' . $this->formatAddress($fromEmail, $fromName),
             'To: ' . $this->formatAddress($toEmail, $toName ?: $toEmail),
-            'Subject: ' . $subject,
+            'Subject: ' . str_replace(["\r", "\n"], '', $subject),
             'Date: ' . gmdate('r'),
             'MIME-Version: 1.0',
             'Content-Type: text/plain; charset=UTF-8',

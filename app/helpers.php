@@ -82,7 +82,7 @@ function seo_excerpt(?string $text, int $limit = 160): string
 
 function json_ld_script(array $data): string
 {
-    return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>';
+    return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>';
 }
 
 function notify_indexnow(string $url): void
@@ -146,7 +146,7 @@ function env_bool(string $value, bool $default = false): bool
 
 function app_debug(): bool
 {
-    return env_bool((string) \App\Core\Env::get('APP_DEBUG', '1'), true);
+    return env_bool((string) \App\Core\Env::get('APP_DEBUG', '0'), false);
 }
 
 function request_ip(): string
