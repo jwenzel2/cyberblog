@@ -153,8 +153,13 @@ final class InstallerService
         Auth::login((int) $admin['id']);
 
         if (($files['wordpress_archive']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $archiveName = (string) ($files['wordpress_archive']['name'] ?? '');
+            if (!preg_match('/\.tar\.gz$/i', $archiveName)) {
+                $errors[] = 'WordPress import failed: only .tar.gz archives are accepted.';
+                return [$errors ? 'Installed with warnings. Review the import report.' : 'Installed successfully. Finish MFA or passkey setup and save your recovery codes.', $errors];
+            }
             try {
-                $path = app_path('storage/tmp/' . basename((string) $files['wordpress_archive']['name']));
+                $path = app_path('storage/tmp/' . basename($archiveName));
                 move_uploaded_file($files['wordpress_archive']['tmp_name'], $path);
                 (new WordPressImporter())->importArchive($path);
             } catch (Throwable $e) {

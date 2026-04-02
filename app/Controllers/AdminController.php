@@ -347,7 +347,13 @@ final class AdminController
             Response::redirect('/admin/imports');
         }
 
-        $tmpPath = app_path('storage/tmp/' . basename((string) $_FILES['wordpress_archive']['name']));
+        $archiveName = (string) ($_FILES['wordpress_archive']['name'] ?? '');
+        if (!preg_match('/\.tar\.gz$/i', $archiveName)) {
+            Session::flash('status', 'Only .tar.gz archives are accepted.');
+            Response::redirect('/admin/imports');
+        }
+
+        $tmpPath = app_path('storage/tmp/' . basename($archiveName));
         move_uploaded_file($_FILES['wordpress_archive']['tmp_name'], $tmpPath);
         try {
             $summary = (new WordPressImporter())->importArchive($tmpPath);

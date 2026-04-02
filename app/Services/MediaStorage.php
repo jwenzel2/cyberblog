@@ -9,16 +9,7 @@ use App\Models\Media;
 final class MediaStorage
 {
     private const ALLOWED_EXTENSIONS = [
-        'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'ico',
-        'mp4', 'webm', 'ogg', 'mp3', 'wav',
-        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-        'txt', 'csv', 'zip',
-    ];
-
-    private const BLOCKED_EXTENSIONS = [
-        'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps', 'phar',
-        'htaccess', 'htpasswd', 'sh', 'bash', 'bat', 'cmd', 'exe', 'com',
-        'cgi', 'pl', 'py', 'rb', 'jsp', 'asp', 'aspx', 'shtml',
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'ico', 'bmp', 'tiff', 'tif',
     ];
 
     public function storeUpload(array $file, ?string $legacySource = null): ?array
@@ -37,10 +28,7 @@ final class MediaStorage
         }
 
         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-        if (in_array($ext, self::BLOCKED_EXTENSIONS, true)) {
-            return null;
-        }
-        if ($ext !== '' && !in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
+        if (!in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
             return null;
         }
 
