@@ -9,7 +9,7 @@ use App\Models\Media;
 final class MediaStorage
 {
     private const ALLOWED_EXTENSIONS = [
-        'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'ico', 'bmp', 'tiff', 'tif',
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'ico', 'bmp', 'tiff', 'tif',
     ];
 
     public function storeUpload(array $file, ?string $legacySource = null): ?array

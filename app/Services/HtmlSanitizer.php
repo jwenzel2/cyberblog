@@ -12,9 +12,10 @@ final class HtmlSanitizer
         $clean = strip_tags($html, $allowed);
 
         // Remove all event handlers: quoted, unquoted, and backtick-quoted.
-        $clean = preg_replace('/\son[a-z]+\s*=\s*"[^"]*"/i', '', $clean) ?: $clean;
-        $clean = preg_replace("/\son[a-z]+\s*=\s*'[^']*'/i", '', $clean) ?: $clean;
-        $clean = preg_replace('/\son[a-z]+\s*=\s*[^\s>]*/i', '', $clean) ?: $clean;
+        // [\s/] covers both whitespace and self-closing slash (e.g. <img/onerror=...>).
+        $clean = preg_replace('/[\s\/]on[a-z]+\s*=\s*"[^"]*"/i', '', $clean) ?: $clean;
+        $clean = preg_replace("/[\s\/]on[a-z]+\s*=\s*'[^']*'/i", '', $clean) ?: $clean;
+        $clean = preg_replace('/[\s\/]on[a-z]+\s*=\s*[^\s>]*/i', '', $clean) ?: $clean;
 
         // Remove javascript:, vbscript:, and data: URIs from href and src attributes.
         $clean = preg_replace('/(<a\s[^>]*?)href\s*=\s*["\']?\s*(?:javascript|vbscript|data)\s*:[^"\'>\s]*/i', '$1href="about:blank"', $clean) ?: $clean;
