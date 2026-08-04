@@ -19,6 +19,8 @@
     <label>Articles per page</label>
     <input type="number" min="1" max="100" name="articles_per_page" value="<?= htmlspecialchars($preferences['articles_per_page'] ?? '10') ?>" required>
     <p class="muted">Applies to public listings and the admin posts table.</p>
+    <label><input type="checkbox" name="support_contact_enabled" value="1" <?= ($preferences['support_contact_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>Enable the public “Contact an admin” support form</label>
+    <p class="muted">When disabled, support links are hidden and both GET and POST requests to <code>/support/contact</code> return 404.</p>
     <label>Site timezone</label>
     <select name="site_timezone">
       <?php $selectedTimezone = $preferences['site_timezone'] ?? (date_default_timezone_get() ?: 'UTC'); ?>

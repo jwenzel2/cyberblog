@@ -536,6 +536,7 @@ final class AdminController
         }
 
         $articlesPerPage = (string) max(1, min(100, (int) ($_POST['articles_per_page'] ?? 10)));
+        $supportContactEnabled = !empty($_POST['support_contact_enabled']) ? '1' : '0';
         $smtpEnabled = !empty($_POST['smtp_enabled']) ? '1' : '0';
         $smtpHost = trim((string) ($_POST['smtp_host'] ?? ''));
         $smtpPort = (string) max(1, (int) ($_POST['smtp_port'] ?? 587));
@@ -555,6 +556,7 @@ final class AdminController
         }
 
         Preference::set('articles_per_page', $articlesPerPage);
+        Preference::set('support_contact_enabled', $supportContactEnabled);
         Preference::set('site_timezone', $siteTimezone);
         Preference::set('seo_site_name', $seoSiteName !== '' ? $seoSiteName : 'CyberBlog');
         Preference::set('seo_default_description', $seoDefaultDescription);

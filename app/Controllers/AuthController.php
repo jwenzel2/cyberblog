@@ -27,6 +27,7 @@ final class AuthController
             'error' => Session::flash('error'),
             'status' => Session::flash('status'),
             'oldEmail' => (string) Session::get('login.email', ''),
+            'supportContactEnabled' => support_contact_enabled(),
         ]);
     }
 
@@ -167,6 +168,7 @@ final class AuthController
             'error' => Session::flash('error'),
             'status' => Session::flash('status'),
             'oldEmail' => (string) Session::get('recovery.email', ''),
+            'supportContactEnabled' => support_contact_enabled(),
         ]);
     }
 

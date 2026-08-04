@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Env;
 use App\Models\User;
 
 final class LoginNotificationService
@@ -30,34 +29,38 @@ final class LoginNotificationService
 
     public function sendTemporaryLockNotice(array $user, string $lockUntil): void
     {
-        $contactUrl = rtrim((string) Env::get('APP_URL', ''), '/') . '/support/contact?email=' . urlencode((string) $user['email']);
         $timezone = app_timezone();
-        $body = implode("\n", [
+        $lines = [
             'Your CyberBlog account has been temporarily locked after repeated failed login attempts.',
             '',
             'Locked until (' . $timezone . '): ' . format_app_datetime($lockUntil),
             'Account: ' . $user['email'],
             '',
             'If this was not you, review your credentials and try again after the lockout period.',
-            'Support form: ' . $contactUrl,
-        ]);
+        ];
+        if (support_contact_enabled()) {
+            $lines[] = 'Support form: ' . app_url('/support/contact?email=' . urlencode((string) $user['email']));
+        }
+        $body = implode("\n", $lines);
 
         (new EmailService())->send((string) $user['email'], 'CyberBlog temporary lockout', $body, (string) $user['display_name']);
     }
 
     public function sendAdminLockNotice(array $user): void
     {
-        $contactUrl = rtrim((string) Env::get('APP_URL', ''), '/') . '/support/contact?email=' . urlencode((string) $user['email']);
         $timezone = app_timezone();
-        $body = implode("\n", [
+        $lines = [
             'Your CyberBlog account has been locked and now requires administrator intervention.',
             '',
             'Time (' . $timezone . '): ' . format_app_datetime(now()),
             'Account: ' . $user['email'],
-            '',
-            'Use the support form to contact an administrator:',
-            $contactUrl,
-        ]);
+        ];
+        if (support_contact_enabled()) {
+            $lines[] = '';
+            $lines[] = 'Use the support form to contact an administrator:';
+            $lines[] = app_url('/support/contact?email=' . urlencode((string) $user['email']));
+        }
+        $body = implode("\n", $lines);
 
         (new EmailService())->send((string) $user['email'], 'CyberBlog account locked', $body, (string) $user['display_name']);
     }

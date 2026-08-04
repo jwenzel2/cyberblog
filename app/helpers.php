@@ -149,6 +149,11 @@ function app_debug(): bool
     return env_bool((string) \App\Core\Env::get('APP_DEBUG', '0'), false);
 }
 
+function support_contact_enabled(): bool
+{
+    return \App\Models\Preference::get('support_contact_enabled', '1') === '1';
+}
+
 function request_ip(): string
 {
     $forwarded = (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');

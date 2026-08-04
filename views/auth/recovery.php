@@ -11,5 +11,7 @@
     <button type="submit">Use recovery code</button>
   </form>
   <p><a href="/login">Back to sign in</a></p>
-  <p class="muted">Need administrator help? <a href="/support/contact?email=<?= urlencode($oldEmail) ?>">Contact an admin</a>.</p>
+  <?php if ($supportContactEnabled): ?>
+    <p class="muted">Need administrator help? <a href="/support/contact?email=<?= urlencode($oldEmail) ?>">Contact an admin</a>.</p>
+  <?php endif; ?>
 </div>

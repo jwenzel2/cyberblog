@@ -16,6 +16,7 @@ final class SupportController
 {
     public function showContact(): void
     {
+        $this->abortIfDisabled();
         Analytics::recordSiteVisit();
         View::render('public/support-contact', [
             'title' => 'Contact Admin',
@@ -28,6 +29,8 @@ final class SupportController
 
     public function submitContact(): void
     {
+        $this->abortIfDisabled();
+
         if (!Csrf::verify($_POST['_csrf'] ?? null)) {
             Response::abort(419, 'Invalid CSRF token.');
         }
@@ -49,5 +52,12 @@ final class SupportController
         (new LoginNotificationService())->sendSupportRequest($email, $message);
         Session::flash('status', 'Your message was sent to the administrators.');
         Response::redirect('/support/contact?email=' . urlencode($email));
+    }
+
+    private function abortIfDisabled(): void
+    {
+        if (!support_contact_enabled()) {
+            Response::abort(404, 'Not found');
+        }
     }
 }
