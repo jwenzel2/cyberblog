@@ -75,6 +75,8 @@ final class LoginNotificationService
                 '',
                 'User email: ' . $fromEmail,
                 'Time (' . $timezone . '): ' . format_app_datetime(now()),
+                'IP address: ' . request_ip(),
+                'Browser: ' . request_user_agent(),
                 '',
                 'Message:',
                 $message,
